@@ -1,4 +1,0 @@
-
-1.参考minicom，用多个k-mer构造contig
-2.参考PgRC，基于contig计算出SCS
-3.编码。。
