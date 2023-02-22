@@ -1,16 +1,16 @@
 #include<bits/stdc++.h>
 #include<unistd.h>
 #include <sys/time.h>
+#include"tools.h"
 #include"comp.h"
 #include"decomp.h"
-#include"tools.h"
 using namespace std;
+
 int main(int argc,char** argv)
 {
     timeval start, end; 
     gettimeofday(&start, NULL);
     
-    init();
     char opt;  //
     const char *optstring = "i:o:d";
     string in_path="",out_path="";
@@ -32,8 +32,8 @@ int main(int argc,char** argv)
         }
     }
     if(in_path==""){
-        in_path="SRR554369_1.fastq";
-        //in_path="test.fastq";
+        //in_path="SRR554369_1.fastq";
+        in_path="test.fastq";
         //cerr<<"in_file lack\n";
         //exit(0);
     }

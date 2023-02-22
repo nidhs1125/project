@@ -26,91 +26,155 @@ void compmain(ifstream& fin,ofstream& fout)
 
 }
 
-//k=20?
+
 void comp()
 {
-    for(Read& it:vecr){
-        it.init(20);
-    }
-    contig_gen();
-    cout<<"contig_gen finish\n";
-    sort(vecc.begin(),vecc.end(),cmp2);
+    read_align(4);
+    cout<<"read_align finish\n";
+    contig_make();
+    cout<<"contig_make finish\n";
     // for(auto &it :vecc){
     //     cout<<it.str<<'\n';
     // }
     SCS_gen();
     sort(vecc.begin(),vecc.end(),cmp4);
     cout<<"SCS_gen finish\n";
-    // for(auto &it:vecc){
-    //     cout<<it.str<<' '<<it.spos<<'\n';
-    // }
+    for(auto &it:vecc){
+        cout<<it.str<<' '<<it.spos<<'\n';
+    }
 }
 
-void contig_gen()
+void read_align(int k)
 {
-    cout<<"contig_gen start\n";
-    sort(vecr.begin(),vecr.end(),cmp1);
-    int n=vecr.size();
+    cout<<"read_align start\n";
+    for(int i=0;i<rcnt;i++){
+        vecr[i].init(k);
+    }
+    vector<int> veccur;//cur vec
+    for(int i=0;i<rcnt;i++) veccur.pb(i);
+    sort(veccur.begin(),veccur.end(),cmp1);
+    int n=rcnt;
     int i=0;
-    while(i<n&&vecr[i].cid==-1){
+    while(i<n){
         int j=i+1;
-        while(j<n&&vecr[j].cid==-1&&vecr[i].val==vecr[j].val) j++;
+        while(j<n&&vecr[veccur[i]].val==vecr[veccur[j]].val) j++;
         //reads in section [i,j] has the same k_mer.
-        //they can form a contig
-        contig_make(i,j-1);
+        //consider the next 5 reads,to choose the best one or more
+        //condition:hamming distance smaller than the threshold=5
+        for(int p=i;p<j;p++){
+            for(int q=p+1;q<j&&q<p+5;q++){
+                int id1=veccur[p],id2=veccur[q];
+                int cnt=0;//total diff
+                for(int j=0;j<min(vecr[id2].str.length(),vecr[id1].str.length()+vecr[id2].k_mer_pos-vecr[id1].k_mer_pos);j++){
+                    if(vecr[id2].str[j]!=vecr[id1].str[j+vecr[id2].k_mer_pos-vecr[id1].k_mer_pos]) cnt++;
+                }
+                if(cnt<threshold) vecr[id1].nxtid.pb(pii(id2,vecr[id1].k_mer_pos-vecr[id2].k_mer_pos));
+            }
+        }
+        
         i=j;
     }
     
 }
 
-//reads in section [l,r] has the same k_mer
-//we need to restore the contig and encode the reads.
-void contig_make(int l,int r)
+/*
+
+according to the nxtid recored in read,choose the best one to continue.
+choose the most frequently occurent one
+if many, choose the bias min one.
+if many, choose any one
+
+*/
+void contig_make()
 {
-    vecc.push_back(Contig());
-    Contig &con=vecc.back();
-    con.cid=ccnt++;
-    int L=1e9,R=-1e9;
-    for(int i=l;i<=r;i++){
-        L=min(L,-vecr[i].k_mer_pos);
-        R=max(R,(int)vecr[i].str.length()-1-vecr[i].k_mer_pos);
-    }
-    con.k_mer_pos=-L;
-    for(int j=L;j<=R;j++){//for every pos
-        int cnt[5]={0};
-        for(int i=l;i<=r;i++){//for every read
-            if(-vecr[i].k_mer_pos<=j&&(int)vecr[i].str.length()-1-vecr[i].k_mer_pos>=j){
-                cnt[trans(vecr[i].str[vecr[i].k_mer_pos+j])]++;
+    cout<<"contig_make start\n";
+    vector<int> pre(rcnt,-1),nxt(rcnt,-1);
+    for(int i=0;i<rcnt;i++){
+        map<pii,int> mp;
+        for(pii it:vecr[i].nxtid){//id and bias
+            //cout<<"|||"<<i<<' '<<it.first<<' '<<it.second<<'\n';
+            if(pre[it.first]!=-1) continue;
+            mp[it]++;
+        }
+        int fre=0,bias=0,nid=-1;
+        for(auto& it:mp){
+            if(it.second>fre){
+                fre=it.second;
+                nid=it.first.first;
+                bias=it.first.second;
+            }
+            else if(it.second==fre&&it.first.second<bias){
+                nid=it.first.first;
+                bias=it.first.second;
             }
         }
-        int mx=cnt[4],mxpos=4;
-        for(int i=3;i>=0;i--) if(cnt[i]>=mx) mx=cnt[i],mxpos=i;
-        con.str+=rtrans(mxpos);
-    }
-    for(int i=l;i<=r;i++){//for every read
-        //calculate the hamming distance and setting cid
-        int cnt=0;
-        for(int j=0;j<vecr[i].str.length();j++){
-            if(vecr[i].str[j]!=con.str[j-vecr[i].k_mer_pos+con.k_mer_pos]) cnt++;
+        if(nid!=-1){
+            nxt[i]=nid;
+            pre[nid]=i;
         }
-        if(cnt<=threshold){//join in and record the dismatch
-            vecr[i].cid=con.cid;
-            vecr[i].rpos=con.k_mer_pos-vecr[i].k_mer_pos;
-            for(int j=0;j<vecr[i].str.length();j++){
-                if(vecr[i].str[j]!=con.str[j-vecr[i].k_mer_pos+con.k_mer_pos]){
-                    vecr[i].dismatch.pb(pir(j,con.str[j-vecr[i].k_mer_pos+con.k_mer_pos]));
+    }
+
+    vector<int> seq;
+
+    for(int t=0;t<rcnt;t++){
+        if(pre[t]==-1){//start
+            seq.clear();
+            int cur=t;
+            while(cur!=-1){
+                seq.pb(cur);
+                cur=nxt[cur];
+            }
+            int l=0,r=seq.size()-1;
+            vecc.push_back(Contig());
+            Contig &con=vecc.back();
+            con.cid=ccnt++;
+            int L=1e9,R=-1e9;
+            for(int i=l;i<=r;i++){
+                L=min(L,-vecr[i].k_mer_pos);
+                R=max(R,(int)vecr[i].str.length()-1-vecr[i].k_mer_pos);
+            }
+            con.k_mer_pos=-L;
+            for(int j=L;j<=R;j++){//for every pos
+                int cnt[5]={0};
+                for(int i=l;i<=r;i++){//for every read
+                    if(-vecr[i].k_mer_pos<=j&&(int)vecr[i].str.length()-1-vecr[i].k_mer_pos>=j){
+                        cnt[trans(vecr[i].str[vecr[i].k_mer_pos+j])]++;
+                    }
                 }
+                int mx=cnt[4],mxpos=4;
+                for(int i=3;i>=0;i--) if(cnt[i]>=mx) mx=cnt[i],mxpos=i;
+                con.str+=rtrans(mxpos);
             }
+            for(int i=l;i<=r;i++){//for every read
+                //calculate the hamming distance and setting cid
+                int cnt=0;
+                for(int j=0;j<vecr[i].str.length();j++){
+                    if(vecr[i].str[j]!=con.str[j-vecr[i].k_mer_pos+con.k_mer_pos]) cnt++;
+                }
+                //if(cnt<=threshold){//join in and record the dismatch
+                    vecr[i].cid=con.cid;
+                    vecr[i].rpos=con.k_mer_pos-vecr[i].k_mer_pos;
+                    for(int j=0;j<vecr[i].str.length();j++){
+                        if(vecr[i].str[j]!=con.str[j-vecr[i].k_mer_pos+con.k_mer_pos]){
+                            vecr[i].dismatch.pb(pii(j,con.str[j-vecr[i].k_mer_pos+con.k_mer_pos]));
+                        }
+                    }
+                //}
+                //else hamming distance too large ,don't join in 
+            }
+            //cout<<ccnt<<' '<<con.str<<'\n';
         }
-        //else hamming distance too large ,don't join in 
     }
-    //cout<<ccnt<<' '<<con.str<<'\n';
+
+    
 }
 
 /*
 reference to PgRC
 for all contig, find the SCS
+
 */
+
 void SCS_gen()
 {
     cout<<"SCS make start\n";
