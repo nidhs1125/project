@@ -7,6 +7,19 @@ using namespace std;
 ll qow(ll a,ll p,ll mod) {ll ans=1;for(;p;a=a*a%mod,p>>=1) if(p&1) ans=ans*a%mod;return ans;}
 ll inv(ll a,ll mod) {return qow(a,mod-2,mod);}
 
+void init()
+{
+    hash_base1.assign(max_str_length,1);
+    hash_base2.assign(max_str_length,1);
+    invhash_base1.assign(max_str_length,1);
+    invhash_base2.assign(max_str_length,1);
+    for(int i=1;i<max_str_length;i++){
+        hash_base1[i]=hash_base1[i-1]*step1%mod1;
+        invhash_base1[i]=inv(hash_base1[i],mod1);
+        hash_base2[i]=hash_base2[i-1]*step2%mod2;
+        invhash_base2[i]=inv(hash_base2[i],mod2);
+    }
+}
 
 int trans(char c)
 {
@@ -52,6 +65,37 @@ char rtrans(int c)
     return ret;
 }
 
+string cal_symm(string& s)
+{
+    string tmp="";
+    for(int p=s.length()-1;p>=0;p--){
+        tmp+=symm(s[p]);
+    }
+    return tmp;
+}
+//find the symmetric char 
+char symm(char c)
+{
+    char ret;
+    switch(c){
+        case 'A':
+            ret='T';
+            break;
+        case 'T':
+            ret='A';
+            break;
+        case 'C':
+            ret='G';
+            break;
+        case 'G':
+            ret='C';
+            break;
+        default:
+            ret='C';//'N' is considered as 'A',so its symmetry is 'C'
+    }
+    return ret;
+}
+
 
 /*
 ull invhash(ull x,int k) {
@@ -68,7 +112,7 @@ ull invhash(ull x,int k) {
 }
 
 /*
-ull invhash1(ull key, int k)
+ull invhash(ull key, int k)
 {
     assert(k<32);
     ull mask=(1ull<<2*k)-1;
@@ -113,28 +157,41 @@ int cal_k_mer(int k,int id,ull& val)
         int tmp=trans(vecr[id].str[i+k-1]);
         cur=((cur<<2)|tmp)&mask;
         rcur=(rcur>>2)|(tmp^3ull)<<shift1;
+        //if(cur==rcur) continue; // skip "symmetric k-mers" as we don't know it strand
         if(invhash(cur,k)<val) val=invhash(cur,k),pos=i;
         //if(invhash(rcur,k)<val) val=invhash(rcur,k),pos=i;
     }
     return pos;
 }
 
+puu get_hash_val(string& s)
+{
+    ull ret1=0,ret2=0;
+    for(int i=0;i<s.length();i++){
+        char ch=s[i];
+        if(ch=='N') ch='A';
+        ret1=(ret1+hash_base1[i]*ch)%mod1;
+        ret2=(ret2+hash_base2[i]*ch)%mod2;
+    }
+    return puu(ret1,ret2);
+}
 
 bool cmp1(int i,int j)
 {
+    if(vecr[i].isrepeat!=vecr[j].isrepeat) return vecr[i].isrepeat<vecr[j].isrepeat;
     if(vecr[i].val!=vecr[j].val) return vecr[i].val<vecr[j].val;
     else return vecr[i].k_mer_pos>vecr[j].k_mer_pos;
 }
 
+bool cmp2(spre& s1,spre& s2)
+{
+    if(s1.val1!=s2.val1) return s1.val1<s2.val1;
+    else return s1.val2<s2.val2;
+}
 
 bool cmp3(Read read1,Read read2)
 {
     return read1.rid<read2.rid;
-}
-
-bool cmp4(Contig con1,Contig con2)
-{
-    return con1.cid<con2.cid;
 }
 
 #endif

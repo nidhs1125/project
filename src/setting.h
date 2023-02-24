@@ -7,6 +7,7 @@ typedef unsigned long long ull;
 #define pic pair<int,char>
 #define pll pair<ll,ll>
 #define pii pair<int,int>
+#define puu pair<ull,ull>
 #define pb push_back
 
 //announcements
@@ -23,11 +24,21 @@ void SCS_gen();
 void encode(ofstream& fout);
 ull invhash(ull key, int k);
 char rtrans(int c);
+int trans(char c);
+void prework();
+puu get_hash_val(string& s);
+char symm(char c);
+string cal_symm(string& s);
 
 //consts
 const int maxk=32;
 int threshold=5;//threshold
 #define max_str_length 210
+const ull step1=131;
+const ull step2=1331;
+const ull mod1=998244353;
+const ull mod2=1000000007;
+
 
 
 //variables
@@ -36,6 +47,12 @@ int rcnt=0;//read cnt
 vector<Read> vecr;//store all reads
 vector<Contig> vecc;
 string ans="";
+vector<ull> hash_base1,hash_base2;
+vector<ull> invhash_base1,invhash_base2;
+vector<vector<int> > vec_id;//order to id
+vector<vector<int> > vec_order;//id to order
+vector<vector<int> > vec_pos;//id to k_mer_pos
+vector<int> vec_k;//k of every round
 
 
 //class
@@ -43,28 +60,30 @@ class Read//save a single read and k-mer
 {
     public:
     Read(){
-        str="",k_mer_pos=0;
         cid=-1;
+        isrepeat=0;
+        str="",k_mer_pos=0;
     }
     Read(int cnt,string str1){
+        cid=-1;
+        isrepeat=0;
         rid=cnt;
         str=str1;
-        cid=-1;
     }
     void init(int k){
-        int n=str.length();
         k_mer_pos=cal_k_mer(k,rid,val);
-        pos[k]=k_mer_pos;
     }
     string str;//read itself
     int k_mer_pos;//a k_mer_pos corresponding to a single k
-    int pos[maxk+1];
-    ull val;//hash_value
+    ull val;//hash_value of k_minimizer
     int rid;//read_id
-    int rpos;
+    int cpos;
     int cid;//contig_id;
     vector<pic> dismatch;
-    vector<pii> nxtid;//the possible next read after this read and the corresponding k
+
+    bool isrepeat;
+    bool issymmrepeat;
+    int repeatid;
 };
 
 class Contig
@@ -83,7 +102,12 @@ class Contig
     int spos;
 };
 
-
+struct spre
+{
+    int id;
+    ull val1;
+    ull val2;
+};
 
 
 

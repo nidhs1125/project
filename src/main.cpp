@@ -12,7 +12,7 @@ int main(int argc,char** argv)
     gettimeofday(&start, NULL);
     
     char opt;  //
-    const char *optstring = "i:o:d";
+    const char *optstring = "i:o:dt";
     string in_path="",out_path="";
     bool flag=0;//flag:if compression;
     while ((opt = getopt(argc, argv, optstring)) != -1) {
@@ -25,6 +25,9 @@ int main(int argc,char** argv)
                 break;
             case 'd':
                 flag=1;
+                break;
+            case 't':
+                threshold=0;
                 break;
             default:
                 cerr<<"Command line parameters default\n";

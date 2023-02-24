@@ -8,6 +8,8 @@ using namespace std;
 
 void compmain(ifstream& fin,ofstream& fout)
 {
+    init();
+
     string tmp;
     int cnt=0;
     vecr.clear();
@@ -19,6 +21,8 @@ void compmain(ifstream& fin,ofstream& fout)
         //if(cnt>=1000000) break;//read 10000 lines
     }
     cout<<cnt<<"lines in total\n";
+    //exclude the same reads
+    prework();
     //接下来需要参考minicom生成contig
     comp();
     cout<<cnt<<"lines,"<<" compression finish"<<'\n';
@@ -26,22 +30,62 @@ void compmain(ifstream& fin,ofstream& fout)
 
 }
 
+void prework()
+{
+    vector<spre> vec;
+    for(int i=0;i<rcnt;i++){
+        puu tmp=get_hash_val(vecr[i].str);
+        vec.pb(spre{i,tmp.first,tmp.second});
+    }
+    sort(vec.begin(),vec.end(),cmp2);
+    for(int i=0;i<rcnt;i++){
+        if(vecr[vec[i].id].isrepeat==1) continue;
+        //try to find repeat read
+        int j=i+1;
+        while(j<rcnt&&vec[j].val1==vec[i].val1&&vec[j].val2==vec[i].val2){
+            vecr[vec[j].id].isrepeat=1;
+            vecr[vec[j].id].issymmrepeat=0;
+            vecr[vec[j].id].repeatid=vec[i].id;
+        }
+        //try to find symmetric repeat read
+        string tmps=cal_symm(vecr[vec[j].id].str);
+        puu tmpp=get_hash_val(tmps);
+        int l=0,r=rcnt,d=0;
+        while(l<r){
+            d=l+r>>1;
+            if(tmpp.first==vec[d].val1){
+                if(tmpp.second<=vec[d].val2) r=d;
+                else l=d+1;
+            }
+            else if(tmpp.first<vec[d].val1) r=d;
+            else if(tmpp.first>vec[d].val1) l=d+1;
+        }
+        j=d;
+        while(j<rcnt&&tmpp.first==vec[j].val1&&tmpp.second==vec[j].val2){
+            vecr[vec[j].id].isrepeat=1;
+            vecr[vec[j].id].issymmrepeat=1;
+            vecr[vec[j].id].repeatid=vec[i].id;
+        }
+    }
+}
 
 void comp()
 {
+    
     read_align(4);
+    // for(auto &it :vecr){
+    //     cout<<it.str<< ' '<<it.k_mer_pos<<'\n';
+    // }
     cout<<"read_align finish\n";
     contig_make();
     cout<<"contig_make finish\n";
     // for(auto &it :vecc){
     //     cout<<it.str<<'\n';
     // }
+    //delete SCS_gen(),SCS is concatenation of all contigs
     SCS_gen();
-    sort(vecc.begin(),vecc.end(),cmp4);
-    cout<<"SCS_gen finish\n";
-    for(auto &it:vecc){
-        cout<<it.str<<' '<<it.spos<<'\n';
-    }
+    cout<<"scs_gen finish\n";
+    cout<<ans<<'\n';
 }
 
 void read_align(int k)
@@ -50,11 +94,23 @@ void read_align(int k)
     for(int i=0;i<rcnt;i++){
         vecr[i].init(k);
     }
-    vector<int> veccur;//cur vec
-    for(int i=0;i<rcnt;i++) veccur.pb(i);
-    sort(veccur.begin(),veccur.end(),cmp1);
+    vector<int> order_to_id;//cur vec
+    for(int i=0;i<rcnt;i++) order_to_id.pb(i);
+    sort(order_to_id.begin(),order_to_id.end(),cmp1);
+    vector<int> id_to_order(rcnt,0);
+    for(int i=0;i<rcnt;i++) id_to_order[order_to_id[i]]=i;
+    vector<int> k_pos(rcnt,0);
+    for(int i=0;i<rcnt;i++) k_pos[i]=vecr[i].k_mer_pos;
+    //write down the result of this round
+    vec_order.pb(order_to_id);
+    vec_id.pb(id_to_order);
+    vec_pos.pb(k_pos);
+    vec_k.pb(k);
+
+    /*
     int n=rcnt;
     int i=0;
+    
     while(i<n){
         int j=i+1;
         while(j<n&&vecr[veccur[i]].val==vecr[veccur[j]].val) j++;
@@ -74,6 +130,7 @@ void read_align(int k)
         
         i=j;
     }
+    */
     
 }
 
@@ -89,9 +146,31 @@ void contig_make()
 {
     cout<<"contig_make start\n";
     vector<int> pre(rcnt,-1),nxt(rcnt,-1);
-    for(int i=0;i<rcnt;i++){
+    for(int i=0;i<rcnt;i++){//every read
+        //for every read_align, check the next 10 reads to form nxtid(id,bias)
+        vector<pii> nxtid;
+        for(int j=0;j<vec_k.size();j++){//for every k
+            int mypos=vec_order[j][i];
+            int pbias=0;
+            int bias;
+            for(int p=mypos+1;p<rcnt&&p<mypos+10;p++){//check the read in pos=p
+                int id2=vec_id[j][p];
+                int id1=i;
+                int cnt=0;//total diff
+                bias=vec_pos[j][id1]-vec_pos[j][id2];
+                if(bias<pbias) break;//impossible
+                pbias=bias;
+                for(int j=0;j<min(vecr[id2].str.length(),vecr[id1].str.length()-bias);j++){
+                    if(vecr[id2].str[j]!=vecr[id1].str[j+bias]) cnt++;
+                }
+                if(cnt<threshold) nxtid.pb(pii(id2,bias));
+            }
+        }
+        // cout<<"nxtid:|||"<<i<<'\n';
+        // for(auto it:nxtid) cout<<it.first<<' '<<it.second<<'\n';
+        //according to nxtid, find the best one to concat
         map<pii,int> mp;
-        for(pii it:vecr[i].nxtid){//id and bias
+        for(pii it:nxtid){//id and bias
             //cout<<"|||"<<i<<' '<<it.first<<' '<<it.second<<'\n';
             if(pre[it.first]!=-1) continue;
             mp[it]++;
@@ -124,6 +203,8 @@ void contig_make()
                 seq.pb(cur);
                 cur=nxt[cur];
             }
+
+
             int l=0,r=seq.size()-1;
             vecc.push_back(Contig());
             Contig &con=vecc.back();
@@ -153,7 +234,7 @@ void contig_make()
                 }
                 //if(cnt<=threshold){//join in and record the dismatch
                     vecr[i].cid=con.cid;
-                    vecr[i].rpos=con.k_mer_pos-vecr[i].k_mer_pos;
+                    vecr[i].cpos=con.k_mer_pos-vecr[i].k_mer_pos;
                     for(int j=0;j<vecr[i].str.length();j++){
                         if(vecr[i].str[j]!=con.str[j-vecr[i].k_mer_pos+con.k_mer_pos]){
                             vecr[i].dismatch.pb(pii(j,con.str[j-vecr[i].k_mer_pos+con.k_mer_pos]));
@@ -162,19 +243,25 @@ void contig_make()
                 //}
                 //else hamming distance too large ,don't join in 
             }
-            //cout<<ccnt<<' '<<con.str<<'\n';
+            cout<<ccnt<<' '<<con.str<<'\n';
         }
     }
 
     
 }
 
+void SCS_gen()
+{
+    cout<<"SCS_gen start\n";
+    int cbias=0;
+    for(int i=0;i<ccnt;i++){
+        ans+=vecc[i].str;
+        vecc[i].spos=cbias;
+        cbias+=vecc[i].str.length();
+    }
+}
 /*
-reference to PgRC
-for all contig, find the SCS
-
-*/
-
+//old version 
 void SCS_gen()
 {
     cout<<"SCS make start\n";
@@ -294,6 +381,11 @@ void SCS_gen()
     //cout<<ans<<'\n';
 }
 
+
+*/
+
+
+//old version
 void encode(ofstream& fout)
 {
     cout<<"encoding...\n";
@@ -312,8 +404,8 @@ void encode(ofstream& fout)
     sort(vecr.begin(),vecr.end(),cmp3);
     
     for(Read& it:vecr){
-        fout<<vecc[it.cid].spos+it.rpos;//pos;
-        //cout<<it.str<<' '<<vecc[it.cid].spos+it.rpos<<'\n';
+        fout<<vecc[it.cid].spos+it.cpos;//pos;
+        //cout<<it.str<<' '<<vecc[it.cid].spos+it.cpos<<'\n';
         fout<<it.dismatch.size();
         if(it.dismatch.size()!=0){
             ull tmp=0;
