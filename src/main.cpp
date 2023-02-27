@@ -12,7 +12,7 @@ int main(int argc,char** argv)
     gettimeofday(&start, NULL);
     
     char opt;  //
-    const char *optstring = "i:o:dt";
+    const char *optstring = "i:o:dt:";
     string in_path="",out_path="";
     bool flag=0;//flag:if compression;
     while ((opt = getopt(argc, argv, optstring)) != -1) {
@@ -27,7 +27,7 @@ int main(int argc,char** argv)
                 flag=1;
                 break;
             case 't':
-                threshold=0;
+                threshold=atoi(optarg);
                 break;
             default:
                 cerr<<"Command line parameters default\n";
@@ -35,7 +35,7 @@ int main(int argc,char** argv)
         }
     }
     if(in_path==""){
-        //in_path="SRR554369_1.fastq";
+        //in_path="../data/SRR554369_1.fastq";
         in_path="test.fastq";
         //cerr<<"in_file lack\n";
         //exit(0);

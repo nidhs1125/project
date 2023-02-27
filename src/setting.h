@@ -44,6 +44,7 @@ const ull mod2=1000000007;
 //variables
 int ccnt=0;//contig cnt
 int rcnt=0;//read cnt
+int repeatcnt=0;//repeat number of reads
 vector<Read> vecr;//store all reads
 vector<Contig> vecc;
 string ans="";
@@ -81,7 +82,7 @@ class Read//save a single read and k-mer
     int cid;//contig_id;
     vector<pic> dismatch;
 
-    bool isrepeat;
+    int isrepeat;
     bool issymmrepeat;
     int repeatid;
 };
@@ -98,7 +99,6 @@ class Contig
     }
     string str;
     int cid;
-    int k_mer_pos;
     int spos;
 };
 

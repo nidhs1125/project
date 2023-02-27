@@ -91,13 +91,13 @@ char symm(char c)
             ret='C';
             break;
         default:
-            ret='C';//'N' is considered as 'A',so its symmetry is 'C'
+            ret='T';//'N' is considered as 'A',so its symmetry is 'T'
     }
     return ret;
 }
 
 
-/*
+
 ull invhash(ull x,int k) {
     // http://xorshift.di.unimi.it/splitmix64.c
     x += 0x9e3779b97f4a7c15;
@@ -105,11 +105,11 @@ ull invhash(ull x,int k) {
     x = (x ^ (x >> 27)) * 0x94d049bb133111eb;
     return x ^ (x >> 31);
 }
-*/
 
-ull invhash(ull x,int k) {
-    return x;
-}
+
+// ull invhash(ull x,int k) {
+//     return x;
+// }
 
 /*
 ull invhash(ull key, int k)
@@ -176,9 +176,19 @@ puu get_hash_val(string& s)
     return puu(ret1,ret2);
 }
 
+bool check(int id1,int id2,int bias)//id1->id2
+{
+    int tot=0;
+    for(int j=0;j<min(vecr[id2].str.length(),vecr[id1].str.length()-bias);j++){
+        if(vecr[id1].str[j+bias]!=vecr[id2].str[j]) tot++;
+    }
+    return tot<=threshold;
+}
+
 bool cmp1(int i,int j)
 {
-    if(vecr[i].isrepeat!=vecr[j].isrepeat) return vecr[i].isrepeat<vecr[j].isrepeat;
+    //isrepeat = 0 or -1 is the same
+    //if(vecr[i].isrepeat!=vecr[j].isrepeat) return vecr[i].isrepeat<vecr[j].isrepeat;
     if(vecr[i].val!=vecr[j].val) return vecr[i].val<vecr[j].val;
     else return vecr[i].k_mer_pos>vecr[j].k_mer_pos;
 }
@@ -189,9 +199,9 @@ bool cmp2(spre& s1,spre& s2)
     else return s1.val2<s2.val2;
 }
 
-bool cmp3(Read read1,Read read2)
+bool cmp3(Read& r1,Read& r2)
 {
-    return read1.rid<read2.rid;
+    return r1.isrepeat<r2.isrepeat;
 }
 
 #endif

@@ -14,6 +14,7 @@ void compmain(ifstream& fin,ofstream& fout)
     int cnt=0;
     vecr.clear();
     while(getline(fin,tmp)){
+        if(tmp[0]=='$') break;
         cnt++;
         if(cnt%4==2){
             vecr.pb(Read(rcnt++,tmp));
@@ -32,6 +33,7 @@ void compmain(ifstream& fin,ofstream& fout)
 
 void prework()
 {
+    cout<<"start prework\n";
     vector<spre> vec;
     for(int i=0;i<rcnt;i++){
         puu tmp=get_hash_val(vecr[i].str);
@@ -39,13 +41,20 @@ void prework()
     }
     sort(vec.begin(),vec.end(),cmp2);
     for(int i=0;i<rcnt;i++){
-        if(vecr[vec[i].id].isrepeat==1) continue;
+        if(vecr[vec[i].id].isrepeat!=0) continue;
+        vecr[vec[i].id].isrepeat=-1;
         //try to find repeat read
         int j=i+1;
         while(j<rcnt&&vec[j].val1==vec[i].val1&&vec[j].val2==vec[i].val2){
+            if(vecr[vec[j].id].isrepeat!=0){
+                j++;
+                continue;
+            }
+            repeatcnt++;
             vecr[vec[j].id].isrepeat=1;
             vecr[vec[j].id].issymmrepeat=0;
             vecr[vec[j].id].repeatid=vec[i].id;
+            j++;
         }
         //try to find symmetric repeat read
         string tmps=cal_symm(vecr[vec[j].id].str);
@@ -60,19 +69,29 @@ void prework()
             else if(tmpp.first<vec[d].val1) r=d;
             else if(tmpp.first>vec[d].val1) l=d+1;
         }
-        j=d;
+        j=l;
         while(j<rcnt&&tmpp.first==vec[j].val1&&tmpp.second==vec[j].val2){
+            if(vecr[vec[j].id].isrepeat!=0){
+                j++;
+                continue;
+            }
+            repeatcnt++;
             vecr[vec[j].id].isrepeat=1;
             vecr[vec[j].id].issymmrepeat=1;
             vecr[vec[j].id].repeatid=vec[i].id;
+            j++;
         }
     }
+    sort(vecr.begin(),vecr.end(),cmp3);
+    rcnt-=repeatcnt;
 }
 
 void comp()
 {
-    
-    read_align(4);
+    //read_align(4);
+    read_align(20);
+    //read_align(28);
+    //read_align(27);
     // for(auto &it :vecr){
     //     cout<<it.str<< ' '<<it.k_mer_pos<<'\n';
     // }
@@ -80,12 +99,12 @@ void comp()
     contig_make();
     cout<<"contig_make finish\n";
     // for(auto &it :vecc){
-    //     cout<<it.str<<'\n';
+    //     cout<<it.cid<<' '<<it.str<<'\n';
     // }
-    //delete SCS_gen(),SCS is concatenation of all contigs
+    //SCS is concatenation of all contigs
     SCS_gen();
     cout<<"scs_gen finish\n";
-    cout<<ans<<'\n';
+    //cout<<ans<<'\n';
 }
 
 void read_align(int k)
@@ -97,13 +116,18 @@ void read_align(int k)
     vector<int> order_to_id;//cur vec
     for(int i=0;i<rcnt;i++) order_to_id.pb(i);
     sort(order_to_id.begin(),order_to_id.end(),cmp1);
+    // cout<<"k="<<k<<' '<<"order:\n";
+    // for(auto it:order_to_id){
+    //     cout<<it<<' ';
+    // }
+    //cout<<'\n';
     vector<int> id_to_order(rcnt,0);
     for(int i=0;i<rcnt;i++) id_to_order[order_to_id[i]]=i;
     vector<int> k_pos(rcnt,0);
     for(int i=0;i<rcnt;i++) k_pos[i]=vecr[i].k_mer_pos;
     //write down the result of this round
-    vec_order.pb(order_to_id);
-    vec_id.pb(id_to_order);
+    vec_id.pb(order_to_id);
+    vec_order.pb(id_to_order);
     vec_pos.pb(k_pos);
     vec_k.pb(k);
 
@@ -137,15 +161,15 @@ void read_align(int k)
 /*
 
 according to the nxtid recored in read,choose the best one to continue.
-choose the most frequently occurent one
-if many, choose the bias min one.
-if many, choose any one
+
 
 */
 void contig_make()
 {
     cout<<"contig_make start\n";
-    vector<int> pre(rcnt,-1),nxt(rcnt,-1);
+    //vecb:bias between cur read and the next read
+    //bias need to be small
+    vector<int> pre(rcnt,-1),nxt(rcnt,-1),vecb(rcnt,max_str_length);
     for(int i=0;i<rcnt;i++){//every read
         //for every read_align, check the next 10 reads to form nxtid(id,bias)
         vector<pii> nxtid;
@@ -156,14 +180,11 @@ void contig_make()
             for(int p=mypos+1;p<rcnt&&p<mypos+10;p++){//check the read in pos=p
                 int id2=vec_id[j][p];
                 int id1=i;
-                int cnt=0;//total diff
                 bias=vec_pos[j][id1]-vec_pos[j][id2];
                 if(bias<pbias) break;//impossible
                 pbias=bias;
-                for(int j=0;j<min(vecr[id2].str.length(),vecr[id1].str.length()-bias);j++){
-                    if(vecr[id2].str[j]!=vecr[id1].str[j+bias]) cnt++;
-                }
-                if(cnt<threshold) nxtid.pb(pii(id2,bias));
+                ///cout<<"+++"<<p<<' '<<mypos<<' '<<id1<<' '<<id2<<' '<<bias<<' '<<check(id1,id2,bias)<<'\n';
+                if(check(id1,id2,bias)) nxtid.pb(pii(id2,bias));
             }
         }
         // cout<<"nxtid:|||"<<i<<'\n';
@@ -176,6 +197,10 @@ void contig_make()
             mp[it]++;
         }
         int fre=0,bias=0,nid=-1;
+        //first, check the diff is less than threshold
+        //choose the most frequently occurent one
+        //if many, choose the bias min one.
+        //if many, choose any one
         for(auto& it:mp){
             if(it.second>fre){
                 fre=it.second;
@@ -190,60 +215,94 @@ void contig_make()
         if(nid!=-1){
             nxt[i]=nid;
             pre[nid]=i;
+            vecb[i]=bias;
         }
     }
+    // cout<<"====bias\n";
+    // for(int i=0;i<rcnt;i++){
+    //     cout<<i<<' '<<pre[i]<<' '<<nxt[i]<<' '<<vecb[i]<<'\n';
+    // }
 
     vector<int> seq;
-
+    vector<int> vis(rcnt,0);
     for(int t=0;t<rcnt;t++){
-        if(pre[t]==-1){//start
+        //the reads form a chain or a ring
+        //if form a ring, find the max bias pos to start
+        if(vis[t]==0){
             seq.clear();
             int cur=t;
-            while(cur!=-1){
-                seq.pb(cur);
-                cur=nxt[cur];
+            int mx=vecb[t],mxpos=t;
+            while(pre[cur]!=-1&&pre[cur]!=t){
+                cur=pre[cur];
+                if(vecb[cur]>mx) mx=vecb[cur],mxpos=cur;
+            }
+            if(pre[cur]==-1){//chain
+                while(cur!=-1){
+                    seq.pb(cur);
+                    vis[cur]=1;
+                    cur=nxt[cur];
+                }
+            }
+            else{//ring
+                cur=nxt[mxpos];
+                while(1){
+                    seq.pb(cur);
+                    vis[cur]=1;
+                    cur=nxt[cur];
+                    if(cur==mxpos) break;
+                }
             }
 
-
+            
             int l=0,r=seq.size()-1;
+            // cout<<"seq:  ";
+            // for(int i=l;i<=r;i++){
+            //     cout<<seq[i]<<' ';
+            // }
+            // cout<<'\n';
             vecc.push_back(Contig());
             Contig &con=vecc.back();
             con.cid=ccnt++;
-            int L=1e9,R=-1e9;
+            int LEN=0,curb=0;
             for(int i=l;i<=r;i++){
-                L=min(L,-vecr[i].k_mer_pos);
-                R=max(R,(int)vecr[i].str.length()-1-vecr[i].k_mer_pos);
+                LEN=max(LEN,curb+(int)vecr[seq[i]].str.length());
+                curb=curb+vecb[seq[i]];
             }
-            con.k_mer_pos=-L;
-            for(int j=L;j<=R;j++){//for every pos
+            for(int j=0;j<LEN;j++){//for every pos
                 int cnt[5]={0};
+                curb=0;
                 for(int i=l;i<=r;i++){//for every read
-                    if(-vecr[i].k_mer_pos<=j&&(int)vecr[i].str.length()-1-vecr[i].k_mer_pos>=j){
-                        cnt[trans(vecr[i].str[vecr[i].k_mer_pos+j])]++;
+                    if(curb<=j&&(int)vecr[seq[i]].str.length()-1+curb>=j){
+                        cnt[trans(vecr[seq[i]].str[j-curb])]++;
                     }
+                    curb+=vecb[seq[i]];
                 }
                 int mx=cnt[4],mxpos=4;
                 for(int i=3;i>=0;i--) if(cnt[i]>=mx) mx=cnt[i],mxpos=i;
                 con.str+=rtrans(mxpos);
             }
+            curb=0;
             for(int i=l;i<=r;i++){//for every read
                 //calculate the hamming distance and setting cid
-                int cnt=0;
-                for(int j=0;j<vecr[i].str.length();j++){
-                    if(vecr[i].str[j]!=con.str[j-vecr[i].k_mer_pos+con.k_mer_pos]) cnt++;
-                }
+                //int cnt=0;
+                
+                // for(int j=0;j<vecr[i].str.length();j++){
+                //     if(vecr[i].str[j]!=con.str[j+curb]) cnt++;
+                // }
                 //if(cnt<=threshold){//join in and record the dismatch
-                    vecr[i].cid=con.cid;
-                    vecr[i].cpos=con.k_mer_pos-vecr[i].k_mer_pos;
-                    for(int j=0;j<vecr[i].str.length();j++){
-                        if(vecr[i].str[j]!=con.str[j-vecr[i].k_mer_pos+con.k_mer_pos]){
-                            vecr[i].dismatch.pb(pii(j,con.str[j-vecr[i].k_mer_pos+con.k_mer_pos]));
+                    vecr[seq[i]].cid=con.cid;
+                    vecr[seq[i]].cpos=curb;
+                    for(int j=0;j<vecr[seq[i]].str.length();j++){
+                        if(vecr[seq[i]].str[j]!=con.str[j+curb]){
+                            vecr[seq[i]].dismatch.pb(pii(j,vecr[seq[i]].str[j]));
                         }
                     }
                 //}
                 //else hamming distance too large ,don't join in 
+                curb+=vecb[seq[i]];
             }
-            cout<<ccnt<<' '<<con.str<<'\n';
+            //cout<<ccnt-1<<' '<<con.str<<'\n';
+            if(ccnt<=100) cout<<ccnt<<' '<<seq.size()<<'\n';
         }
     }
 
@@ -385,11 +444,14 @@ void SCS_gen()
 */
 
 
-//old version
 void encode(ofstream& fout)
 {
     cout<<"encoding...\n";
+    // for(auto it:vecr) cout<<it.rid<<' ';
+    // cout<<'\n';
     fout<<ans.length();
+    cout<<ans.length()<<' '<<ans.length()*4/1024/26/1024<<'\n';
+    cout<<rcnt<<' '<<ccnt<<'\n';
     for(int i=0;i<ans.length();i+=26){
         ull tmp=0;
         ull base=1;
@@ -399,23 +461,44 @@ void encode(ofstream& fout)
         }
         fout<<tmp;
     }
-    fout<<vecr.size();
+    fout<<rcnt;
+    vector<int> curpos(rcnt+repeatcnt,-1);
     //for every read,show the pos
-    sort(vecr.begin(),vecr.end(),cmp3);
-    
-    for(Read& it:vecr){
-        fout<<vecc[it.cid].spos+it.cpos;//pos;
+    for(int i=0;i<rcnt;i++){
+        Read& it=vecr[i];
+        curpos[vecr[i].rid]=i;
+        fout<<(int)(vecc[it.cid].spos+it.cpos);//pos;
         //cout<<it.str<<' '<<vecc[it.cid].spos+it.cpos<<'\n';
-        fout<<it.dismatch.size();
+        fout<<(char)it.dismatch.size();//at most 5
         if(it.dismatch.size()!=0){
-            ull tmp=0;
+            ull tmp=0;//5 dismatch at most when k=5,so char is enough 
             ull base=1;
             for(auto it1:it.dismatch){
-                fout<<it1.first;
+                fout<<(char)it1.first;
                 tmp+=base*trans(it1.second);
                 base*=5;
             }
-            fout<<tmp;
+            fout<<(char)tmp;
         }
+    }
+    fout<<repeatcnt;
+    for(int i=rcnt;i<rcnt+repeatcnt;i++){
+        if(curpos[vecr[i].repeatid]==-1){
+            cout<<i<<' '<<rcnt<<' '<<repeatcnt<<' '<<vecr.size()<<'\n';
+            cout<<vecr[i].repeatid<<' '<<vecr[i].isrepeat<<'\n';
+        }
+        assert(curpos[vecr[i].repeatid]!=-1);
+        //cout<<vecr[i].repeatid<<'\n';
+        fout<<curpos[vecr[i].repeatid];
+        fout<<(char)vecr[i].issymmrepeat;
+        int cnt=0;
+        for(int j=0;j<vecr[i].str.length();j++){
+            if(vecr[i].str[j]=='N') cnt++;
+        }
+        fout<<(char)cnt;
+        for(int j=0;j<vecr[i].str.length();j++){
+            if(vecr[i].str[j]=='N') fout<<(char)j;
+        }
+
     }
 }
