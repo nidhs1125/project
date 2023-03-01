@@ -6,7 +6,7 @@
 #include"decomp.h"
 using namespace std;
 
-int main(int argc,char** argv)
+signed main(int argc,char** argv)
 {
     timeval start, end; 
     gettimeofday(&start, NULL);
