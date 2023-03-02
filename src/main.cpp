@@ -35,8 +35,11 @@ signed main(int argc,char** argv)
         }
     }
     if(in_path==""){
-        //in_path="../data/SRR554369_1.fastq";
+        #if testflag 
         in_path="test.fastq";
+        #else
+        in_path="../data/SRR554369_1.fastq";
+        #endif
         //cerr<<"in_file lack\n";
         //exit(0);
     }

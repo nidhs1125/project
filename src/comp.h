@@ -89,11 +89,16 @@ void prework()
 void comp()
 {
     //read_align(4);
-    read_align(20);
+    #if testflag
+    read_align(4);
+    #else
+    read_align(25);
+    #endif
     //read_align(28);
     //read_align(27);
-    // for(auto &it :vecr){
-    //     cout<<it.str<< ' '<<it.k_mer_pos<<'\n';
+    // for(int i=0;i<rcnt;i++){
+    //     auto& it=vecr[i];
+    //     cout<<it.str<< ' '<<vec_pos[rndk-1][i]<<'\n';
     // }
     cout<<"read_align finish\n";
     contig_make();
@@ -110,57 +115,35 @@ void comp()
 void read_align(int k)
 {
     cout<<"read_align start\n";
+    vec_k.pb(k);
+    vec_val.pb(vector<ull>(rcnt,0));
+    vec_is.pb(vector<int>(rcnt,0));
+    vec_pos.pb(vector<int>(rcnt,0));
     for(int i=0;i<rcnt;i++){
-        vecr[i].init(i,k);
+        cal_k_mer(k,i,vec_pos[rndk][i],vec_val[rndk][i],vec_is[rndk][i]);
     }
     vector<int> order_to_id;//cur vec
     for(int i=0;i<rcnt;i++) order_to_id.pb(i);
     sort(order_to_id.begin(),order_to_id.end(),cmp1);
-    // cout<<"k="<<k<<' '<<"order:\n";
-    // for(auto it:order_to_id){
-    //     cout<<it<<' ';
+    #if testflag
+    cout<<"k="<<rndk<<'\n';
+    cout<<"order:\n";
+    for(auto it:order_to_id){
+        cout<<it<<' ';
+    }
+    cout<<'\n';
+    #endif
+    // cout<<"detail:\n";
+    // for(int i=0;i<rcnt;i++){
+    //     cout<<i<<' '<<vec_val[rndk][i]<<' '<<vec_is[rndk][i]<<' '<<vec_pos[rndk][i]<<'\n';
     // }
     // cout<<'\n';
     vector<int> id_to_order(rcnt,0);
     for(int i=0;i<rcnt;i++) id_to_order[order_to_id[i]]=i;
-    vector<int> k_pos(rcnt,0);
-    for(int i=0;i<rcnt;i++) k_pos[i]=vecr[i].k_mer_pos;
-    vector<bool> issymm(rcnt,0);
-    for(int i=0;i<rcnt;i++) issymm[i]=vecr[i].iskmersymm;
-    vector<ull> val(rcnt,0);
     //write down the result of this round
     vec_id.pb(order_to_id);
     vec_order.pb(id_to_order);
-    vec_pos.pb(k_pos);
-    vec_is.pb(issymm);
-    vec_val.pb(val);
-    vec_k.pb(k);
-
-    /*
-    int n=rcnt;
-    int i=0;
-    
-    while(i<n){
-        int j=i+1;
-        while(j<n&&vecr[veccur[i]].val==vecr[veccur[j]].val) j++;
-        //reads in section [i,j] has the same k_mer.
-        //consider the next 5 reads,to choose the best one or more
-        //condition:hamming distance smaller than the threshold=5
-        for(int p=i;p<j;p++){
-            for(int q=p+1;q<j&&q<p+5;q++){
-                int id1=veccur[p],id2=veccur[q];
-                int cnt=0;//total diff
-                for(int j=0;j<min(vecr[id2].str.length(),vecr[id1].str.length()+vecr[id2].k_mer_pos-vecr[id1].k_mer_pos);j++){
-                    if(vecr[id2].str[j]!=vecr[id1].str[j+vecr[id2].k_mer_pos-vecr[id1].k_mer_pos]) cnt++;
-                }
-                if(cnt<threshold) vecr[id1].nxtid.pb(pii(id2,vecr[id1].k_mer_pos-vecr[id2].k_mer_pos));
-            }
-        }
-        
-        i=j;
-    }
-    */
-    
+    rndk++;
 }
 
 /*
@@ -174,14 +157,14 @@ void contig_make()
     cout<<"contig_make start\n";
     //vecb:bias between cur read and the next read
     //bias need to be small
-    //isrev:record is reverse,if is, 
-    vector<int> pre(rcnt,-1),nxt(rcnt,-1),vecb(rcnt,max_str_length),isrev(rcnt,0);
+    //isrev:record is reverse state between the adjacent reads 
+    //veck:record the k  
+    vector<int> pre(rcnt,-1),nxt(rcnt,-1),vecb(rcnt,max_str_length),isrev(rcnt,0),veck(rcnt,0);
     for(int i=0;i<rcnt;i++){//every read
         //for every read_align, check the next 10 reads to form nxtid(id,bias)
         vector<pii> nxtid;
-        for(int j=0;j<vec_k.size();j++){//for every k
+        for(int j=0;j<rndk;j++){//for every k
             int mypos=vec_order[j][i];
-            int bias;
             for(int p=mypos+1;p<rcnt&&p<mypos+k_num;p++){//check the read in pos=p
                 int id2=vec_id[j][p];
                 int id1=i;
@@ -193,39 +176,49 @@ void contig_make()
         // cout<<"nxtid:|||"<<i<<'\n';
         // for(auto it:nxtid) cout<<it.first<<' '<<it.second<<'\n';
         //according to nxtid, find the best one to concat
-        map<pii,int> mp;
+        map<pii,sconmake> mp;
         for(pii it:nxtid){//id and bias
             //cout<<"|||"<<i<<' '<<it.first<<' '<<it.second<<'\n';
             if(pre[it.first]!=-1) continue;
-            mp[it]++;
+            int bias=cal_len(i,it.second)-cal_len(it.first,it.second);
+            if(mp.count(pii(it.first,bias))){
+                mp[pii(it.first,bias)].cnt++;
+            }
+            else{
+                mp[pii(it.first,bias)]=sconmake{vec_is[it.second][i]^vec_is[it.second][it.first],1,it.second};
+            }   
         }
-        int fre=0,bias=0,nid=-1;
+        int fre=0,bias=max_str_length;
+        sconmake tmp=sconmake{0,-1,0};//regard tmp.cnt as nid
         //???????consider more bias!instead of just frequent only, or the read with one diff will be discard
         //first, check the diff is less than threshold
-        //choose the most frequently occurent one
-        //if many, choose the bias min one.
+        //
+        //choose the bias min one.
+        //if many, choose the most frequently occurent one
         //if many, choose any one
         for(auto& it:mp){
-            if(it.second>fre){
-                fre=it.second;
-                nid=it.first.first;
+            if(it.first.second<bias){
+                fre=it.second.cnt;
                 bias=it.first.second;
+                tmp=sconmake{it.second.isrev,it.first.first,it.second.k};
             }
-            else if(it.second==fre&&it.first.second<bias){
-                nid=it.first.first;
-                bias=it.first.second;
+            else if(it.first.second==bias&&it.second.cnt>fre){
+                fre=it.second.cnt;
+                tmp=sconmake{it.second.isrev,it.first.first,it.second.k};
             }
         }
-        if(nid!=-1){
-            nxt[i]=nid;
-            pre[nid]=i;
+        if(tmp.cnt!=-1){
+            nxt[i]=tmp.cnt;
+            pre[tmp.cnt]=i;
             vecb[i]=bias;
+            isrev[i]=tmp.isrev;
+            veck[i]=tmp.k;
         }
     }
     // cout<<"====bias\n";
     // for(int i=0;i<rcnt;i++){
     //     if(pre[i]!=-1||nxt[i]!=-1){
-    //         cout<<i<<' '<<pre[i]<<' '<<nxt[i]<<' '<<vecb[i]<<'\n';
+    //         cout<<i<<' '<<pre[i]<<' '<<nxt[i]<<' '<<vecb[i]<<' '<<isrev[i]<<'\n';
     //     }
         
     // }
@@ -234,7 +227,7 @@ void contig_make()
     vector<int> vis(rcnt,0);
     for(int t=0;t<rcnt;t++){
         //the reads form a chain
-        //impossible to form a ring(only in small cases and small k)
+        //impossible to form a ring (only in small cases and small k)
         if(vis[t]==1) continue;
         seq.clear();
         int cur=t;
@@ -249,36 +242,43 @@ void contig_make()
             if(cur==start) break;
         }
 
-        
-        int l=0,r=seq.size()-1;
+        //actually make contig according to the seq
         // cout<<"seq:  ";
-        // for(int i=l;i<=r;i++){
+        // for(int i=0;i<seq.size();i++){
         //     cout<<seq[i]<<' ';
         // }
-        //cout<<'\n';
+        // cout<<'\n';
         vecc.push_back(Contig());
         Contig &con=vecc.back();
         con.cid=ccnt++;
-        int LEN=0,curb=0;
-        for(int i=l;i<=r;i++){
+        //initialize currev, use veck to determine the state
+        int LEN=0,curb=0,currev=vec_is[veck[seq[0]]][seq[0]];
+        for(int i=0;i<seq.size();i++){
             LEN=max(LEN,curb+(int)vecr[seq[i]].str.length());
             curb=curb+vecb[seq[i]];
         }
         for(int j=0;j<LEN;j++){//for every pos
-            int cnt[5]={0};
+            int cnt[4]={0};
             curb=0;
-            for(int i=l;i<=r;i++){//for every read
+            currev=vec_is[veck[seq[0]]][seq[0]];
+            for(int i=0;i<seq.size();i++){//for every read
                 if(curb<=j&&(int)vecr[seq[i]].str.length()-1+curb>=j){
-                    cnt[trans(vecr[seq[i]].str[j-curb])]++;
+                    int curc;
+                    if(currev==0) curc=trans(symm(vecr[seq[i]].str[j-curb],0));
+                    else curc=trans(symm(vecr[seq[i]].str[vecr[seq[i]].str.length()-1-(j-curb)],1));
+                    //cout<<"debug: "<<j<<' '<<i<<' '<<curb<<' '<<currev<<' '<<curc<<'\n';
+                    cnt[curc]++;
                 }
                 curb+=vecb[seq[i]];
+                currev=currev^isrev[seq[i]];
             }
-            int mx=cnt[4],mxpos=4;
-            for(int i=3;i>=0;i--) if(cnt[i]>=mx) mx=cnt[i],mxpos=i;
+            int mx=cnt[3],mxpos=3;
+            for(int i=2;i>=0;i--) if(cnt[i]>=mx) mx=cnt[i],mxpos=i;
             con.str+=trans(mxpos);
         }
         curb=0;
-        for(int i=l;i<=r;i++){//for every read
+        currev=vec_is[veck[seq[0]]][seq[0]];
+        for(int i=0;i<seq.size();i++){//for every read
             //calculate the hamming distance and setting cid
             //int cnt=0;
             
@@ -288,16 +288,28 @@ void contig_make()
             //if(cnt<=threshold){//join in and record the dismatch
                 vecr[seq[i]].cid=con.cid;
                 vecr[seq[i]].cpos=curb;
+                vecr[seq[i]].isrev=isrev[i];
                 for(int j=0;j<vecr[seq[i]].str.length();j++){
-                    if(vecr[seq[i]].str[j]!=con.str[j+curb]){
-                        vecr[seq[i]].dismatch.pb(pii(j,vecr[seq[i]].str[j]));
+                    if(currev==0){
+                        if(vecr[seq[i]].str[j]!=con.str[j+curb]){
+                            vecr[seq[i]].dismatch.pb(pii(j,vecr[seq[i]].str[j]));
+                        }
                     }
+                    else{//reverse
+                        if(vecr[seq[i]].str[vecr[seq[i]].str.length()-1-j]!=symm(con.str[j+curb],1)){
+                            vecr[seq[i]].dismatch.pb(pii(vecr[seq[i]].str.length()-1-j,vecr[seq[i]].str[j]));
+                        }
+                    }
+                    
                 }
             //}
             //else hamming distance too large ,don't join in 
             curb+=vecb[seq[i]];
+            currev^=isrev[i];
         }
-        //cout<<ccnt-1<<' '<<con.str<<'\n';
+        #if testflag
+        cout<<ccnt-1<<' '<<con.str<<' '<<LEN<<'\n';
+        #endif
         //if(ccnt<=100) cout<<ccnt<<' '<<seq.size()<<'\n';
     }
 
@@ -445,14 +457,14 @@ void encode(ofstream& fout)
     // for(auto it:vecr) cout<<it.rid<<' ';
     // cout<<'\n';
     fout<<ans.length();
-    cout<<ans.length()<<' '<<ans.length()*4/1024/26/1024<<'\n';
+    cout<<ans.length()<<' '<<ans.length()*4/1024/32/1024<<'\n';
     cout<<rcnt<<' '<<ccnt<<'\n';
-    for(int i=0;i<ans.length();i+=26){
+    for(int i=0;i<ans.length();i+=32){
         ull tmp=0;
         ull base=1;
-        for(int j=0;j+i<ans.length()&&j<26;j++){
+        for(int j=0;j+i<ans.length()&&j<32;j++){//don't has 'N'
             tmp=tmp+trans(ans[i+j])*base;
-            base*=5;
+            base*=4;
         }
         fout<<tmp;
     }
@@ -463,6 +475,7 @@ void encode(ofstream& fout)
         Read& it=vecr[i];
         curpos[vecr[i].rid]=i;
         fout<<(int)(vecc[it.cid].spos+it.cpos);//pos;
+        fout<<(char)(vecr[i].isrev);
         //cout<<it.str<<' '<<vecc[it.cid].spos+it.cpos<<'\n';
         fout<<(char)it.dismatch.size();//at most 5
         if(it.dismatch.size()!=0){
