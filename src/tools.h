@@ -43,7 +43,7 @@ int trans(char c)
     return ret;
 }
 
-char trans(int c)
+char trans(int c)//when compressing, use only 0-3
 {
     char ret;
     switch(c){
@@ -60,7 +60,7 @@ char trans(int c)
             ret='T';
             break;
         default:
-            ret='A';//'A'
+            ret='N';
     }
     return ret;
 }
@@ -69,7 +69,8 @@ string cal_symm(string& s)
 {
     string tmp="";
     for(int p=s.length()-1;p>=0;p--){
-        tmp+=symm(s[p],1);
+        if(s[p]=='N') tmp+=s[p];//if N,remain the same to guarantee the same 
+        else tmp+=symm(s[p],1);
     }
     return tmp;
 }
@@ -101,7 +102,7 @@ char symm(char c,bool is)
                 ret='C';
                 break;
             default:
-                ret='A';//'N' is considered as 'A',so its symmetry is 'T'
+                ret='A';//'N' is considered as 'T',so its symmetry is 'A'
         }
     }
     
@@ -184,7 +185,6 @@ puu get_hash_val(string& s)
     ull ret1=0,ret2=0;
     for(int i=0;i<s.length();i++){
         char ch=s[i];
-        if(ch=='N') ch='A';
         ret1=(ret1+hash_base1[i]*ch)%mod1;
         ret2=(ret2+hash_base2[i]*ch)%mod2;
     }
@@ -264,4 +264,40 @@ bool cmp3(Read& r1,Read& r2)
     return r1.isrepeat<r2.isrepeat;
 }
 
+bool cmp4(Read& r1,Read& r2)
+{
+    return r1.rid<r2.rid;
+}
+
+int in_int(ifstream& fin)
+{
+    char ch;
+    int ret=0;
+    for(int i=0;i<4;i++){
+        ret=ret<<8;
+        fin.read(&ch,1);
+        ret|=(unsigned char)ch;
+    }
+    return ret;
+}
+
+unsigned char in_char(ifstream& fin)
+{
+    char ch;
+    fin.read(&ch,1);
+    return (unsigned char)ch;
+}
+
+void out_int(ofstream& fout,int out)
+{
+    fout<<(char)((out>>24)&0xff);
+    fout<<(char)((out>>16)&0xff);
+    fout<<(char)((out>>8)&0xff);
+    fout<<(char)((out)&0xff);
+}
+
+void out_char(ofstream& fout,char out)
+{
+    fout<<out;
+}
 #endif

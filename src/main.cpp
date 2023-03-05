@@ -12,7 +12,7 @@ signed main(int argc,char** argv)
     gettimeofday(&start, NULL);
     
     char opt;  //
-    const char *optstring = "i:o:dt:";
+    const char *optstring = "i:o:dt:r";
     string in_path="",out_path="";
     bool flag=0;//flag:if compression;
     while ((opt = getopt(argc, argv, optstring)) != -1) {
@@ -29,29 +29,43 @@ signed main(int argc,char** argv)
             case 't':
                 threshold=atoi(optarg);
                 break;
+            case 'r':
+                order_preserve=1;
             default:
                 cerr<<"Command line parameters default\n";
                 exit(0);
         }
     }
-    if(in_path==""){
-        #if testflag 
-        in_path="test.fastq";
-        #else
-        in_path="../data/SRR554369_1.fastq";
-        #endif
-        //cerr<<"in_file lack\n";
-        //exit(0);
+    if(flag==0){
+        if(in_path==""){
+            #if testflag 
+            in_path="test.fastq";
+            #else
+            in_path="../data/SRR554369_1.fastq";
+            #endif
+            //cerr<<"in_file lack\n";
+            //exit(0);
+        }
+        if(out_path==""){
+            out_path="test.mine";
+            //cerr<<"out_file lack\n";
+            //exit(0);
+        }
     }
-    if(out_path==""){
-        out_path="test.mine";
-        //cerr<<"out_file lack\n";
-        //exit(0);
+    else{
+        if(in_path==""){
+            in_path="test.mine";
+        }
+        if(out_path==""){
+            out_path="decomp.fastq";
+        }
     }
+    
     
     ifstream fin;
     ofstream fout;
-    fin.open(in_path);
+    fin.open(in_path,ios::in|ios::binary);
+    //fin.open(in_path);
     fout.open(out_path);
     if(!fin.is_open()||!fout.is_open()){
         cerr<<"path default\n";

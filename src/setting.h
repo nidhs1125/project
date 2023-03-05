@@ -4,6 +4,7 @@
 using namespace std;
 typedef long long ll;
 typedef unsigned long long ull;
+typedef unsigned int uint;
 #define pic pair<int,char>
 #define pll pair<ll,ll>
 #define pii pair<int,int>
@@ -34,6 +35,7 @@ int cal_len(int i,int k);
 #define testflag 0
 const int maxk=32;
 int threshold=5;//threshold
+int order_preserve=0;//if order preserved;
 #define max_str_length 210
 const ull step1=131;
 const ull step2=1331;

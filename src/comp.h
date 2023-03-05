@@ -24,6 +24,7 @@ void compmain(ifstream& fin,ofstream& fout)
     cout<<cnt<<"lines in total\n";
     //exclude the same reads
     prework();
+    cout<<"prework finish\n";
     //接下来需要参考minicom生成contig
     comp();
     cout<<cnt<<"lines,"<<" compression finish"<<'\n';
@@ -57,9 +58,10 @@ void prework()
             j++;
         }
         //try to find symmetric repeat read
-        string tmps=cal_symm(vecr[vec[j].id].str);
+        string tmps=cal_symm(vecr[vec[i].id].str);
         puu tmpp=get_hash_val(tmps);
-        int l=0,r=rcnt,d=0;
+        //binary search
+        int l=0,r=rcnt-1,d=0;
         while(l<r){
             d=l+r>>1;
             if(tmpp.first==vec[d].val1){
@@ -181,6 +183,7 @@ void contig_make()
             //cout<<"|||"<<i<<' '<<it.first<<' '<<it.second<<'\n';
             if(pre[it.first]!=-1) continue;
             int bias=cal_len(i,it.second)-cal_len(it.first,it.second);
+            assert(bias>=0);
             if(mp.count(pii(it.first,bias))){
                 mp[pii(it.first,bias)].cnt++;
             }
@@ -288,7 +291,7 @@ void contig_make()
             //if(cnt<=threshold){//join in and record the dismatch
                 vecr[seq[i]].cid=con.cid;
                 vecr[seq[i]].cpos=curb;
-                vecr[seq[i]].isrev=isrev[i];
+                vecr[seq[i]].isrev=currev;
                 for(int j=0;j<vecr[seq[i]].str.length();j++){
                     if(currev==0){
                         if(vecr[seq[i]].str[j]!=con.str[j+curb]){
@@ -296,8 +299,8 @@ void contig_make()
                         }
                     }
                     else{//reverse
-                        if(vecr[seq[i]].str[vecr[seq[i]].str.length()-1-j]!=symm(con.str[j+curb],1)){
-                            vecr[seq[i]].dismatch.pb(pii(vecr[seq[i]].str.length()-1-j,vecr[seq[i]].str[j]));
+                        if(vecr[seq[i]].str[j]!=symm(con.str[vecr[seq[i]].str.length()-1-j+curb],1)){//contig has no 'N'
+                            vecr[seq[i]].dismatch.pb(pii(j,vecr[seq[i]].str[j]));
                         }
                     }
                     
@@ -456,40 +459,41 @@ void encode(ofstream& fout)
     cout<<"encoding...\n";
     // for(auto it:vecr) cout<<it.rid<<' ';
     // cout<<'\n';
-    fout<<ans.length();
-    cout<<ans.length()<<' '<<ans.length()*4/1024/32/1024<<'\n';
+    out_int(fout,ans.length());
     cout<<rcnt<<' '<<ccnt<<'\n';
-    for(int i=0;i<ans.length();i+=32){
-        ull tmp=0;
-        ull base=1;
-        for(int j=0;j+i<ans.length()&&j<32;j++){//don't has 'N'
-            tmp=tmp+trans(ans[i+j])*base;
-            base*=4;
+    //cout<<ans<<'\n';
+    for(int i=0;i<ans.length();i+=16){
+        uint tmp=0;
+        uint base=0x40000000;
+        for(int j=0;j<16;j++){//don't has 'N'
+            if(j+i<ans.length()) tmp=tmp+trans(ans[i+j])*base;
+            base>>=2;
         }
-        fout<<tmp;
+        out_int(fout,tmp);
     }
-    fout<<rcnt;
+    out_int(fout,rcnt);
     vector<int> curpos(rcnt+repeatcnt,-1);
+    sort(vecr.begin(),vecr.begin()+rcnt,cmp4);
+    sort(vecr.begin()+rcnt,vecr.end(),cmp4);//sort separately
     //for every read,show the pos
     for(int i=0;i<rcnt;i++){
         Read& it=vecr[i];
         curpos[vecr[i].rid]=i;
-        fout<<(int)(vecc[it.cid].spos+it.cpos);//pos;
-        fout<<(char)(vecr[i].isrev);
+        out_int(fout,(int)(vecc[it.cid].spos+it.cpos));//pos;
+        out_char(fout,(char)vecr[i].str.length());//len
+        //here can use bias...
+        out_char(fout,(char)(vecr[i].isrev));
         //cout<<it.str<<' '<<vecc[it.cid].spos+it.cpos<<'\n';
-        fout<<(char)it.dismatch.size();//at most 5
+        out_char(fout,(char)it.dismatch.size());//at most 5
         if(it.dismatch.size()!=0){
-            ull tmp=0;//5 dismatch at most when k=5,so char is enough 
-            ull base=1;
             for(auto it1:it.dismatch){
-                fout<<(char)it1.first;
-                tmp+=base*trans(it1.second);
-                base*=5;
+                out_char(fout,(char)it1.first);
+                out_char(fout,(char)it1.second);
             }
-            fout<<(char)tmp;
         }
+        //cout<<"+++"<<i<<' '<<(int)(vecc[it.cid].spos+it.cpos)<<' '<<(int)vecr[i].str.length()<<' '<<(int)(vecr[i].isrev)<<' '<<(int)it.dismatch.size()<<'\n';
     }
-    fout<<repeatcnt;
+    out_int(fout,repeatcnt);
     for(int i=rcnt;i<rcnt+repeatcnt;i++){
         if(curpos[vecr[i].repeatid]==-1){
             cout<<i<<' '<<rcnt<<' '<<repeatcnt<<' '<<vecr.size()<<'\n';
@@ -497,16 +501,10 @@ void encode(ofstream& fout)
         }
         assert(curpos[vecr[i].repeatid]!=-1);
         //cout<<vecr[i].repeatid<<'\n';
-        fout<<curpos[vecr[i].repeatid];
-        fout<<(char)vecr[i].issymmrepeat;
-        int cnt=0;
-        for(int j=0;j<vecr[i].str.length();j++){
-            if(vecr[i].str[j]=='N') cnt++;
+        out_int(fout,curpos[vecr[i].repeatid]);
+        out_char(fout,(char)vecr[i].issymmrepeat);
+        if(order_preserve==1){
+            out_int(fout,vecr[i].rid);//the rid of read,if need order preserved
         }
-        fout<<(char)cnt;
-        for(int j=0;j<vecr[i].str.length();j++){
-            if(vecr[i].str[j]=='N') fout<<(char)j;
-        }
-
     }
 }
