@@ -47,14 +47,14 @@ signed main(int argc,char** argv)
             //exit(0);
         }
         if(out_path==""){
-            out_path="test.mine";
+            out_path="test";
             //cerr<<"out_file lack\n";
             //exit(0);
         }
     }
     else{
         if(in_path==""){
-            in_path="test.mine";
+            in_path="test";
         }
         if(out_path==""){
             out_path="decomp.fastq";
@@ -62,20 +62,24 @@ signed main(int argc,char** argv)
     }
     
     
-    ifstream fin;
-    ofstream fout;
-    fin.open(in_path,ios::in|ios::binary);
-    //fin.open(in_path);
-    fout.open(out_path);
-    if(!fin.is_open()||!fout.is_open()){
-        cerr<<"path default\n";
-        exit(0);
-    }
+    
     if(flag==0){
-        compmain(fin,fout);
+        ifstream fin;
+        fin.open(in_path,ios::in|ios::binary);
+        if(!fin.is_open()){
+            cerr<<"path default\n";
+            exit(0);
+        }
+        compmain(fin,out_path);
     }
     else{
-        decompmain(fin,fout);
+        ofstream fout;
+        fout.open(out_path);
+        if(!fout.is_open()){
+            cerr<<"path default\n";
+            exit(0);
+        }
+        decompmain(in_path,fout);
     }
     
     cout<<"finish\n";

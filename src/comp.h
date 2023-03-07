@@ -6,7 +6,7 @@ using namespace std;
 
 
 
-void compmain(ifstream& fin,ofstream& fout)
+void compmain(ifstream& fin,string& out_path)
 {
     init();
 
@@ -28,7 +28,7 @@ void compmain(ifstream& fin,ofstream& fout)
     //接下来需要参考minicom生成contig
     comp();
     cout<<cnt<<"lines,"<<" compression finish"<<'\n';
-    encode(fout);
+    encode(out_path);
 
 }
 
@@ -329,6 +329,7 @@ void SCS_gen()
         cbias+=vecc[i].str.length();
     }
 }
+
 /*
 //old version 
 void SCS_gen()
@@ -450,16 +451,25 @@ void SCS_gen()
     //cout<<ans<<'\n';
 }
 
-
 */
 
 
-void encode(ofstream& fout)
+
+void encode(string& out_path)
 {
     cout<<"encoding...\n";
     // for(auto it:vecr) cout<<it.rid<<' ';
     // cout<<'\n';
-    out_int(fout,ans.length());
+    //according to out_path, determine the out_path
+    //has 3 paths in total: contig, readpos(bias) and the mismatch
+    ofstream fout1,fout2,fout3;
+    fout1.open(out_path+".mine1");
+    fout2.open(out_path+".mine2");
+    fout3.open(out_path+".mine3");
+
+    //part 1
+    out_int(fout1,ans.length());
+    out_int(fout1,rcnt+repeatcnt);
     cout<<rcnt<<' '<<ccnt<<'\n';
     //cout<<ans<<'\n';
     for(int i=0;i<ans.length();i+=16){
@@ -469,42 +479,40 @@ void encode(ofstream& fout)
             if(j+i<ans.length()) tmp=tmp+trans(ans[i+j])*base;
             base>>=2;
         }
-        out_int(fout,tmp);
+        out_int(fout1,tmp);
     }
-    out_int(fout,rcnt);
+
+    //part 2
+    
     vector<int> curpos(rcnt+repeatcnt,-1);
-    sort(vecr.begin(),vecr.begin()+rcnt,cmp4);
-    sort(vecr.begin()+rcnt,vecr.end(),cmp4);//sort separately
-    //for every read,show the pos
     for(int i=0;i<rcnt;i++){
-        Read& it=vecr[i];
         curpos[vecr[i].rid]=i;
-        out_int(fout,(int)(vecc[it.cid].spos+it.cpos));//pos;
-        out_char(fout,(char)vecr[i].str.length());//len
-        //here can use bias...
-        out_char(fout,(char)(vecr[i].isrev));
-        //cout<<it.str<<' '<<vecc[it.cid].spos+it.cpos<<'\n';
-        out_char(fout,(char)it.dismatch.size());//at most 5
-        if(it.dismatch.size()!=0){
-            for(auto it1:it.dismatch){
-                out_char(fout,(char)it1.first);
-                out_char(fout,(char)it1.second);
+        vecr[i].cpos+=vecc[vecr[i].cid].spos;//pos in contig +bias of contig -> pos in ans
+    }
+    for(int i=rcnt;i<rcnt+repeatcnt;i++){
+        vecr[i].cpos=vecr[curpos[vecr[i].repeatid]].cpos;
+    }
+    sort(vecr.begin(),vecr.end(),cmp4);
+    int ppos=0,cpos;
+    //for every read,show the pos
+    for(int i=0;i<rcnt+repeatcnt;i++){
+        Read& it=vecr[i];
+        cpos=vecr[i].cpos;
+        out_char(fout2,cpos-ppos);//bias
+        out_char(fout2,it.isrepeat==1);//if repeat
+        if(it.isrepeat==1){
+            out_char(fout2,it.issymmrepeat);//if symm
+        }
+        else{
+            out_char(fout2,(char)(it.isrev));//if rev
+            out_char(fout3,(char)it.dismatch.size());//at most 5
+            if(it.dismatch.size()!=0){
+                for(auto it1:it.dismatch){
+                    out_char(fout3,(char)it1.first);
+                    out_char(fout3,(char)it1.second);
+                }
             }
         }
-        //cout<<"+++"<<i<<' '<<(int)(vecc[it.cid].spos+it.cpos)<<' '<<(int)vecr[i].str.length()<<' '<<(int)(vecr[i].isrev)<<' '<<(int)it.dismatch.size()<<'\n';
-    }
-    out_int(fout,repeatcnt);
-    for(int i=rcnt;i<rcnt+repeatcnt;i++){
-        if(curpos[vecr[i].repeatid]==-1){
-            cout<<i<<' '<<rcnt<<' '<<repeatcnt<<' '<<vecr.size()<<'\n';
-            cout<<vecr[i].repeatid<<' '<<vecr[i].isrepeat<<'\n';
-        }
-        assert(curpos[vecr[i].repeatid]!=-1);
-        //cout<<vecr[i].repeatid<<'\n';
-        out_int(fout,curpos[vecr[i].repeatid]);
-        out_char(fout,(char)vecr[i].issymmrepeat);
-        if(order_preserve==1){
-            out_int(fout,vecr[i].rid);//the rid of read,if need order preserved
-        }
+        ppos=cpos;
     }
 }

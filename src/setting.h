@@ -16,13 +16,13 @@ class Read;
 class Contig;
 
 void read_align(int k);
-void compmain(ifstream& fin,ofstream& fout);
+void compmain(ifstream& fin,string& out_path);
 void comp();
-void decompmain(ifstream& fin,ofstream& fout);
+void decompmain(string& in_path,ofstream& fout);
 void contig_make();
 void cal_k_mer(int k,int id,int& k_mer_pos,ull& val,int& iskmersymm);
 void SCS_gen();
-void encode(ofstream& fout);
+void encode(string& out_path);
 ull invhash(ull key, int k);
 int trans(char c);
 void prework();
@@ -42,6 +42,11 @@ const ull step2=1331;
 const ull mod1=998244353;
 const ull mod2=1000000007;
 const int k_num=30;//the number of read considered
+#if testflag
+int read_len=6;
+#else
+int read_len=100;
+#endif
 
 
 //variables

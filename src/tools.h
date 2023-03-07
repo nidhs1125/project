@@ -266,7 +266,16 @@ bool cmp3(Read& r1,Read& r2)
 
 bool cmp4(Read& r1,Read& r2)
 {
-    return r1.rid<r2.rid;
+    if(r1.cpos!=r2.cpos) return r1.cpos<r2.cpos;
+    else{
+        int id1,id2;
+        if(r1.isrepeat==1) id1=r1.repeatid;
+        else id1=r1.rid;
+        if(r2.isrepeat==1) id2=r2.repeatid;
+        else id2=r2.rid;
+        if(id1!=id2) return id1<id2;
+        else return r1.isrepeat<r2.isrepeat;
+    }
 }
 
 int in_int(ifstream& fin)
