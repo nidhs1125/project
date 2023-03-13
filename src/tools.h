@@ -162,8 +162,8 @@ void cal_k_mer(int k,int id,int& k_mer_pos,ull& val,int& iskmersymm)
     }
 
     for(int i=0;i<min(n,k);i++){
-        int tmp=trans(vecr[id].str[i]);
-        assert(tmp>=0&&tmp<=3);
+        int tmp=trans(symm(vecr[id].str[i],0));
+        int tmpr=trans(symm(vecr[id].str[i],1));
         cur=((cur<<2)|tmp)&mask;
         rcur=(rcur>>2)|(tmp^3ull)<<shift1;
     }
@@ -192,16 +192,16 @@ puu get_hash_val(string& s)
 }
 
 
-bool check(int id1,int id2,int k)//id1->id2,in the k-th round
+bool check(int id1,int id2)//id1->id2,in the k-th round
 {
     int tot=0;
-    int k_mer_pos1=vec_pos[k][id1],issymm1=vec_is[k][id1];
-    int k_mer_pos2=vec_pos[k][id2],issymm2=vec_is[k][id2];
+    int k_mer_pos1=vecr[id1].k_mer_pos,issymm1=vecr[id1].isrev;
+    int k_mer_pos2=vecr[id2].k_mer_pos,issymm2=vecr[id2].isrev;
     int start_pos1,step1,len1,tag1;
     int start_pos2,step2,len2,tag2;
 
     tag1=vecr[id1].str.length();
-    len1=cal_len(id1,k);
+    len1=cal_len(id1);
     if(issymm1==0){
         step1=1;
         start_pos1=0;
@@ -212,7 +212,7 @@ bool check(int id1,int id2,int k)//id1->id2,in the k-th round
     }
 
     tag2=vecr[id2].str.length();
-    len2=cal_len(id2,k);
+    len2=cal_len(id2);
     if(issymm2==0){
         step2=1;
         start_pos2=0;
@@ -223,35 +223,28 @@ bool check(int id1,int id2,int k)//id1->id2,in the k-th round
     }
     
     assert(len1>=len2);
-    start_pos1+=step2*(len1-len2);
+    start_pos1+=step1*(len1-len2);
+    assert(len1>=len2);
     int p1=start_pos1,p2=start_pos2;
+    //cout<<p1<<' '<<p2<<' '<<step1<<' '<<step2<<' '<<'\n';
     while(p1>=0&&p1<tag1&&p2>=0&&p2<tag2){
         if(symm(vecr[id1].str[p1],issymm1)!=symm(vecr[id2].str[p2],issymm2)) tot++;
         p1+=step1;
         p2+=step2;
     }
+    //cout<<"check: "<<id1<<' '<<id2<<' '<<tot<<' '<<threshold<<' '<<vecr[id1].str<<' '<<vecr[id2].str<<'\n';
     return tot<=threshold;
 }
 
-int cal_len(int i,int k)
+
+int cal_len(int i)
 {
     int ret=0;
-    if(vec_is[k][i]==0) ret=vec_pos[k][i];
-    else ret=vecr[i].str.length()-1-vec_pos[k][i];
+    if(vecr[i].isrev==0) ret=vecr[i].k_mer_pos;
+    else ret=vecr[i].str.length()-1-vecr[i].k_mer_pos;
     return ret;
 }
 
-bool cmp1(int i,int j)//before sorting, use vecr directly
-{
-    //if(vecr[i].isrepeat!=vecr[j].isrepeat) return vecr[i].isrepeat<vecr[j].isrepeat;
-    if(vec_val[rndk][i]!=vec_val[rndk][j]) return vec_val[rndk][i]<vec_val[rndk][j];
-    else{
-        //if issymm has diff direction
-        //so we need to compare with the distance between start(end) pos of k_mer and the head(tail).
-        int len1=cal_len(i,rndk),len2=cal_len(j,rndk);
-        return len1>len2;
-    }
-}
 
 bool cmp2(spre& s1,spre& s2)
 {
@@ -308,5 +301,10 @@ void out_int(ofstream& fout,int out)
 void out_char(ofstream& fout,char out)
 {
     fout<<out;
+}
+
+int find(int x)
+{
+    return pre[x]==x?x:pre[x]=find(pre[x]);
 }
 #endif

@@ -25,12 +25,13 @@ char trans(int c)//when compressing, use only 0-3
 }
 signed main()
 {
-    int n=5;
-    int l=7;
+    srand(time(0));
+    int n=100;
+    int l=6;
     ofstream fout;
     fout.open("test.fastq");
     for(int i=1;i<=n;i++){
-        fout<<i<<'\n';
+        fout<<i-1<<'\n';
         for(int j=0;j<l;j++){
             fout<<trans(rand()%5);
         }

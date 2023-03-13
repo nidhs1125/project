@@ -19,9 +19,7 @@ void read_align(int k);
 void compmain(ifstream& fin,string& out_path);
 void comp();
 void decompmain(string& in_path,ofstream& fout);
-void contig_make();
 void cal_k_mer(int k,int id,int& k_mer_pos,ull& val,int& iskmersymm);
-void SCS_gen();
 void encode(string& out_path);
 ull invhash(ull key, int k);
 int trans(char c);
@@ -29,12 +27,12 @@ void prework();
 puu get_hash_val(string& s);
 string cal_symm(string& s);
 char symm(char c,bool is);
-int cal_len(int i,int k);
+void* cal_pre(void* arg);
 
 //consts
-#define testflag 0
+#define testflag 1
 const int maxk=32;
-int threshold=5;//threshold
+int threshold=2;//threshold
 int order_preserve=0;//if order preserved;
 #define max_str_length 210
 const ull step1=131;
@@ -42,11 +40,8 @@ const ull step2=1331;
 const ull mod1=998244353;
 const ull mod2=1000000007;
 const int k_num=30;//the number of read considered
-#if testflag
-int read_len=6;
-#else
-int read_len=100;
-#endif
+int read_len=0;
+const int thread_bias=1333;
 
 
 //variables
@@ -59,13 +54,10 @@ vector<Contig> vecc;
 string ans="";
 vector<ull> hash_base1,hash_base2;
 vector<ull> invhash_base1,invhash_base2;
-vector<vector<int> > vec_id;//order to id
-vector<vector<int> > vec_order;//id to order
-vector<vector<int> > vec_pos;//id to k_mer_pos
-vector<vector<int> > vec_is;//id to iskmersymm
-vector<vector<ull> > vec_val;//the hash_val of k_mer
-vector<int> vec_k;//k of every round
-
+vector<int> pre;//disjoint set
+vector<vector<int> > basket;
+vector<int> nxt_bas;
+vector<int> bias_bas;
 
 //class
 class Read//save a single read and k-mer
@@ -83,10 +75,14 @@ class Read//save a single read and k-mer
         str=str1;
     }
     string str;//read itself
+    int k_mer_pos;
+    ull val;
+    int isrev;
     int rid;//read_id
     int cpos;
     int cid;//contig_id;
-    int isrev;
+    
+    int pre;
     vector<pic> dismatch;
 
     int isrepeat;

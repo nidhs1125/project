@@ -9,6 +9,7 @@ bool check()
     ifstream fin1;
     ifstream fin2;
     fin1.open("test.fastq");
+    //fin1.open("test.fastq");
     string tmp;
     int cnt=0;
     while(getline(fin1,tmp)){
@@ -41,10 +42,10 @@ signed main()
 {
     int cnt=0;
     while(1){
-        //system("./random.out");
+        system("./random.out");
         
-        //system("./main.out ");
-        //system("./main.out -d");
+        system("./main.out -t 0");
+        system("./main.out -d");
         
         if (!check()){
         	printf("testcase %d : WA\n",cnt);
@@ -53,7 +54,7 @@ signed main()
 		else{
 			printf("testcase %d : AC\n",cnt++);
 		}
-        break;
+        sleep(1);
     }
     return 0;
 }
