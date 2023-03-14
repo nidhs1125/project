@@ -245,6 +245,11 @@ int cal_len(int i)
     return ret;
 }
 
+bool cmp1(int id1,int id2)
+{
+    if(vecr[id1].val!=vecr[id2].val) return vecr[id1].val<vecr[id2].val;
+    else return cal_len(id1)<cal_len(id2);
+}
 
 bool cmp2(spre& s1,spre& s2)
 {
@@ -307,4 +312,19 @@ int find(int x)
 {
     return pre[x]==x?x:pre[x]=find(pre[x]);
 }
+
+int dsu(int id1,int id2)
+{
+    assert(pre[id1]==id1);
+    assert(pre[id2]==id2);
+    if(id1==id2) return id1;
+    if(basket[id1].size()<basket[id2].size()) swap(id1,id2);
+    pre[id2]=id1;
+    for(int i=0;i<basket[id2].size();i++) basket[id1].pb(basket[id2][i]);
+    basket[id2].resize(0);
+    return id1;
+}
+
+
+
 #endif

@@ -91,14 +91,13 @@ void prework()
 
 void comp()
 {
+    pre.resize(rcnt);
+    basket.resize(rcnt);
+    for(int i=0;i<rcnt;i++) pre[i]=i,basket[i].pb(i);
+
+
+    //part 1, merging the reads without bias
     #if testflag
-    // int k=4;
-    // int tmp;
-    // pthread_t pid_i=thread_bias-1;
-    // if((tmp=pthread_create(&pid_i,NULL,read_align,(void*)k))!=0){
-    //     cout<<"pthread_create ERROR\n";
-    //     exit(0);
-    // }
     read_align(4);
     #else
     read_align(25);
@@ -110,7 +109,25 @@ void comp()
     //     cout<<it.str<< ' '<<vec_pos[rndk-1][i]<<'\n';
     // }
 
-    cal_nxt();
+
+
+    //part 2,merging baskets with bias
+    bas_num=0;
+    for(int i=0;i<rcnt;i++){
+        if(find(i)==i){
+            order_to_id[bas_num++]=i;
+        }
+    }
+    nxt_bas.assign(rcnt,-1);
+    pre_bas.assign(rcnt,-1);
+    #if testflag
+    bas_align(4);
+    #else
+    bas_align(25);
+    bas_align(27);
+    bas_align(29);
+    #endif
+    
     cout<<"read_align finish\n";
     contig_make();
 
@@ -118,52 +135,122 @@ void comp()
 }
 
 
-void* read_align(void* arg)
+//void* read_align(void* arg)
+void read_align(int k)
 {
-    
-    cout<<"read_align start\n";
-    int k=(int)arg;
+    cout<<"read_align start, k="<<k<<'\n';
+    order_to_id.resize(rcnt);
+    //this part can add multi-thread
     for(int i=0;i<rcnt;i++){
-        cal_k_mer(k,i,vecr[i].k_mer_pos,vecr[i].val,vecr[i].isrev);
+        order_to_id[i]=i;
+        if(find(i)==i) cal_k_mer(k,i,vecr[i].k_mer_pos,vecr[i].val,vecr[i].isrev);
+        else vecr[i].val=UINT64_MAX,vecr[i].k_mer_pos=0;//not root,discard
     }
-    pre.resize(rcnt);
-    for(int i=0;i<rcnt;i++) pre[i]=i;
+
+    sort(order_to_id.begin(),order_to_id.end(),cmp1);
+    pthread_id=0;
     int tmp;
-    for(int i=0;i<rcnt;i++){
-        pthread_t pid_i=i+thread_bias;
-        if((tmp=pthread_create(&pid_i,NULL,cal_pre,(void*)i))!=0){
+    for(int i=0;i<thread_num;i++){
+        pthread_t pid_i=i;
+        if((tmp=pthread_create(&pid_i,NULL,cal_pre,NULL))!=0){
             cout<<"pthread_create ERROR\n";
             exit(0);
         }
     }
-    for(int i=0;i<rcnt;i++){
-        pthread_t pid_i=i+thread_bias;
+    for(int i=0;i<thread_num;i++){
+        pthread_t pid_i=i;
         pthread_join(pid_i,NULL);
-    }
-    for(int i=0;i<rcnt;i++) find(i);//Path compression
-    basket.resize(rcnt);
-    for(int i=0;i<rcnt;i++){
-        basket[pre[i]].pb(i);
     }
 }
 
 void* cal_pre(void* arg)
 {
-    int pos=(int)arg;
-    for(int i=pos-1;i>=0&&i>=pos-300&&vecr[i].val==vecr[pos].val&&cal_len(i)==cal_len(pos);i--){
-        if(check(i,pos)){
-            pre[pos]=i;
-            break;
+    while(1){
+        int my_id;
+        pthread_mutex_lock(&pthread_id_mutex);
+        my_id=pthread_id++;
+        pthread_mutex_unlock(&pthread_id_mutex);
+        int pos=order_to_id[my_id];
+        if(my_id>=rcnt||vecr[pos].val==UINT64_MAX) break;
+        for(int i=pos-1;i>=0&&i>=pos-300;i--){
+            int ppos=order_to_id[i];
+            if(vecr[pos].val!=vecr[ppos].val) break;
+            if(cal_len(pos)!=cal_len(ppos)) break;
+            if(check(pos,ppos)){
+                //merge two baskets,need lock, the total complexity is O(nlog^2n)
+                pthread_mutex_lock(&pre_mutex);
+                int id1=find(pos),id2=find(ppos);
+                pre[id1]=pre[id2]=dsu(id1,id2);
+                pthread_mutex_unlock(&pre_mutex);
+                
+                break;
+            }
         }
     }
+    
 }
 
 //according to the basket,calculate the relation between root of basket
 //or union basket
-void cal_nxt()
+void bas_align(int k)
 {
-    nxt_bas.assign(rcnt,-1);
-    //...
+    
+    order_to_id.resize(bas_num);
+    //this part can add multi-thread
+    for(int i=0;i<bas_num;i++){
+        int id=order_to_id[i];
+        assert(find(id)==id);
+        cal_k_mer(k,i,vecr[i].k_mer_pos,vecr[i].val,vecr[i].isrev);
+    }
+    sort(order_to_id.begin(),order_to_id.begin()+bas_num,cmp1);
+
+    pthread_id=0;
+    int tmp;
+    for(int i=0;i<thread_num;i++){
+        pthread_t pid_i=i;
+        if((tmp=pthread_create(&pid_i,NULL,cal_nxt,NULL))!=0){
+            cout<<"pthread_create ERROR\n";
+            exit(0);
+        }
+    }
+    for(int i=0;i<thread_num;i++){
+        pthread_t pid_i=i;
+        pthread_join(pid_i,NULL);
+    }
+    
+}
+
+void* cal_nxt(void* arg)
+{
+    while(1){
+        int my_id;
+        pthread_mutex_lock(&pthread_id_mutex);
+        my_id=pthread_id++;
+        pthread_mutex_unlock(&pthread_id_mutex);
+        int pos=order_to_id[my_id];
+        assert(vecr[pos].val!=UINT64_MAX);
+        if(my_id>=bas_num) break;
+        for(int i=pos+1;i<bas_num&&i<=pos+300;i++){
+            int npos=order_to_id[i];
+            if(vecr[pos].val!=vecr[npos].val) break;
+            if(cal_len(pos)==cal_len(npos)) continue;//don't consider the baskets without bias
+            if(check(pos,npos)){
+                //merge two baskets,need lock, the total complexity is O(nlog^2n)
+                pthread_mutex_lock(&pre_bas_mutex);
+                if(pre[npos]==-1){
+                    pre_bas[npos]=pos;
+                    nxt_bas[pos]=npos;
+                    bias_bas[pos]=cal_len(pos)-cal_len(npos);
+                    pthread_mutex_unlock(&pre_bas_mutex);
+                    break;
+                }   
+                else pthread_mutex_unlock(&pre_bas_mutex);//can't merge,but this can occur only few cases
+                
+                
+            }
+        }
+    }
+    
 }
 
 void contig_make()
@@ -180,6 +267,9 @@ void contig_make()
         //the reads form a chain
         //impossible to form a ring (only in small cases and small k)
         if(vis[t]==1) continue;
+        if(find(t)!=t) continue;
+        if(pre_bas[t]!=-1) continue;
+        //only root of basket and the head of chain of baskets, make contig
         seq.clear();
         int cur=t;
         while(cur!=-1){
