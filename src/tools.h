@@ -148,7 +148,7 @@ calculate the k-mer of a single read, identified by its id
 //int trans(char c);
 void cal_k_mer(int k,int id,int& k_mer_pos,ull& val,int& iskmersymm)
 {
-    int n=vecr[id].str.size(),i=0;
+    int i=0;
     k_mer_pos=0;
     val=0;
     ull cur=0;
@@ -161,7 +161,7 @@ void cal_k_mer(int k,int id,int& k_mer_pos,ull& val,int& iskmersymm)
         k_mer_pos=0;
     }
 
-    for(int i=0;i<min(n,k);i++){
+    for(int i=0;i<min(read_len,k);i++){
         int tmp=trans(symm(vecr[id].str[i],0));
         int tmpr=trans(symm(vecr[id].str[i],1));
         cur=((cur<<2)|tmp)&mask;
@@ -169,7 +169,7 @@ void cal_k_mer(int k,int id,int& k_mer_pos,ull& val,int& iskmersymm)
     }
     val=invhash(cur,k);
     if(invhash(rcur,k)<val) val=invhash(rcur,k),iskmersymm=1,k_mer_pos=0+k-1;
-    for(int i=1;i+k<=n;i++){
+    for(int i=1;i+k<=read_len;i++){
         int tmp=trans(symm(vecr[id].str[i+k-1],0));
         int tmpr=trans(symm(vecr[id].str[i+k-1],1));
         cur=((cur<<2)|tmp)&mask;
@@ -236,6 +236,25 @@ bool check(int id1,int id2)//id1->id2,in the k-th round
     return tot<=threshold;
 }
 
+bool check1(int id,int pos,int is)//vecc id and pos in ans and if symm
+{
+    int cthre=read_len/threshold_ratio_re;
+    int cnt=0;
+    if(pos<0||pos>ans.length()-read_len) return 0;
+    if(!is){
+        for(int i=0;i<read_len;i++){
+            if(vecc[id].str[i]!=ans[i+pos]) cnt++;
+        }
+    }
+    else{
+        for(int i=0;i<read_len;i++){
+            if(vecc[id].str[i]!=symm(ans[pos+read_len-i-1],1)) cnt++;
+        }
+    }
+    if(cnt<=cthre) return 1;
+    else return 0;
+}
+
 
 int cal_len(int i)
 {
@@ -274,16 +293,6 @@ bool cmp4(Read& r1,Read& r2)
         if(id1!=id2) return id1<id2;
         else return r1.isrepeat<r2.isrepeat;
     }
-}
-
-bool cmp5(Contig& con1,Contig& con2)
-{
-    return con1.num>con2.num;
-}
-
-bool cmp6(Contig& con1,Contig& con2)
-{
-    return con1.cid<con2.cid;
 }
 
 

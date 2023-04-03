@@ -15,24 +15,19 @@ void* get_hash_value(void* arg)
 }
 int main(int argc,char** argv)
 {
-    // string str="AAAAAAAAAAAAAAAAAAAA";
-    // string str2="AAAAAAAAAAAAAAAAAAA";
-    // cout<<get_hash_value(str)<<' '<<get_hash_value(str2);
-    int tmp;
-    int x=1;
-    pthread_t pid_i;
-    cout<<"+++"<<1<<' '<<x<<'\n';
-    if((tmp=pthread_create(&pid_i,NULL,get_hash_value,(void*)&x))!=0){
-        cout<<"pthread_create ERROR\n";
-        exit(0);
+    ifstream fin;
+    fin.open("../data/SRR445718.fastq");
+    int cnt=0;
+    int line=0;
+    string tmp;
+    while(getline(fin,tmp)){
+        if(tmp[0]=='$') break;
+        line++;
+        if(line%4==2){
+            if(tmp.find("N")!=string::npos) cnt++;
+        }
     }
-    int y=2;
-    cout<<"+++"<<2<<' '<<y<<'\n';
-    if((tmp=pthread_create(&pid_i,NULL,get_hash_value,(void*)&y))!=0){
-        cout<<"pthread_create ERROR\n";
-        exit(0);
-    }
-    sleep(1);
+    cout<<cnt<<' '<<line<<'\n';
 }
 
 /*

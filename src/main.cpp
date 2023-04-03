@@ -71,7 +71,7 @@ signed main(int argc,char** argv)
     
     if(flag==0){
         ifstream fin;
-        fin.open(in_path,ios::in|ios::binary);
+        fin.open(in_path);
         if(!fin.is_open()){
             cerr<<"path default\n";
             exit(0);

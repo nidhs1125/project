@@ -36,14 +36,16 @@ void* cal_nxt(void* arg);
 int cal_len(int i);
 void bas_align(int k);
 void contig_make();
-void realignment(int id);
+int realignment(int id,int k,int& is);
 void SCS_gen();
 void* cal_block(void* arg);
+void realignment_prework(int k);
 
 //consts
 #define testflag 1
 const int maxk=32;
-int threshold=2;//threshold
+int threshold=2;//threshold in read without bias
+int threshold_ratio_re=5;//threadhold in realignment=readlen/threshold_ratio_re
 int thread_num=19;//total thread is thread_num+1
 int order_preserve=0;//if order preserved;
 #define max_str_length 210
@@ -76,7 +78,7 @@ vector<vector<int> > basket_rev;//record the reverse state, it is guaranteed tha
 pthread_mutex_t pthread_id_mutex = PTHREAD_MUTEX_INITIALIZER;
 int pthread_id;//cur cid
 vector<int> order_to_id;//cur order mapping to its id
-//between basket
+//between baskets
 int bas_num;
 pthread_mutex_t bas_edge_mutex = PTHREAD_MUTEX_INITIALIZER;
 vector<vector<Edge> > bas_edge;//the first place is out_edge(only one) and the other are in_edge
@@ -88,6 +90,11 @@ int vis_id;
 
 pthread_mutex_t vis_mutex = PTHREAD_MUTEX_INITIALIZER;
 vector<int> vis;
+//realignment
+unordered_map<ull,vector<int>> mp_pos;
+
+
+
 
 //class
 class Read//save a single read and k-mer
@@ -142,7 +149,7 @@ class Contig
     int cid;
     int spos;
     int num;
-    int is;//if has realignment
+    int is;//if reverse in ans
     vector<pic> dismatch;
 };
 

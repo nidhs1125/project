@@ -33,6 +33,10 @@ void compmain(ifstream& fin,string& out_path)
     //接下来需要参考minicom生成contig
     comp();
     cout<<cnt<<"lines,"<<" compression finish"<<'\n';
+
+    SCS_gen();
+
+
     encode(out_path);
 
 }
@@ -232,7 +236,7 @@ void comp()
     contig_make();
     cout<<"contig_make finish\n";
     print_time();
-    SCS_gen();
+    
 }
 
 
@@ -499,7 +503,6 @@ void* cal_block(void* arg)
 void SCS_gen()
 {
     cout<<"SCS_gen start\n";
-    sort(vecc.begin(),vecc.end(),cmp5);
     int cbias=0;
     for(int i=0;i<ccnt;i++){
         if(vecc[i].num!=1){//if more than one, add 
@@ -507,23 +510,123 @@ void SCS_gen()
             vecc[i].spos=cbias;
             cbias+=vecc[i].str.length();
         }
+        else continue;
+    }
+    //prework:hash all k-mer in ans,
+
+    #if testflag
+    int k=4;
+    #else
+    int k=23;
+    #endif
+
+    realignment_prework(k);
+    for(int i=0;i<ccnt;i++){
+        if(vecc[i].num!=1) continue;
         else{//try to realign
-            realignment(i);
-            if(vecc[i].is==0){//add to the end of ans(SCS)
+            int is=0;
+            int rpos=realignment(i,k,is);
+            if(rpos==-1){//add to the end of ans(SCS)
                 ans+=vecc[i].str;
                 vecc[i].spos=cbias;
                 cbias+=vecc[i].str.length();
             }
+            else{
+                vecc[i].is=is;
+                vecc[i].spos=rpos;
+                if(is==0){
+                    for(int j=0;j<read_len;j++){
+                        if(vecc[i].str[j]!=symm(ans[i+rpos],0)) vecc[i].dismatch.pb(pic(j,vecc[i].str[j]));
+                    }
+                }
+                else{
+                    for(int j=0;j<read_len;j++){
+                        if(vecc[i].str[j]!=symm(ans[rpos+read_len-1-j],0)) vecc[i].dismatch.pb(pic(j,vecc[i].str[j]));
+                    }
+                }
+                
+            }
         }
-        
     }
-    sort(vecc.begin(),vecc.end(),cmp6);
 }
 
-
-void realignment(int id)//cur vecc id
+void realignment_prework(int k)
+{   
+    assert(k<32);
+    assert(read_len>=k);
+    ull mask=(1ull<<2*k)-1;
+    ull cur=0;
+    for(int i=0;i<min((int)ans.length(),k);i++){
+        int tmp=trans(symm(ans[i],0));
+        cur=((cur<<2)|tmp)&mask;
+    }
+    mp_pos[cur].pb(0);
+    for(int i=1;i+k<=ans.length();i++){
+        int tmp=trans(symm(ans[i+k-1],0));
+        cur=((cur<<2)|tmp)&mask;
+        mp_pos[cur].pb(i);
+    }
+}
+int realignment(int id,int k,int& is)//cur vecc id
 {
+    assert(id<vecc.size()&&vecc[id].num==1);
+    ull cur=0;
+    ull rcur=0;
+    int shift1=(2*k-2);
+    ull mask=(1ull<<2*k)-1;
 
+
+    //the first k-mer
+    int l=0,r=l+k-1;
+    for(int i=l;i<=r;i++){
+        int tmp=trans(symm(vecc[id].str[i],0));
+        int tmpr=trans(symm(vecc[id].str[i],1));
+        cur=((cur<<2)|tmp)&mask;
+        rcur=(rcur>>2)|(tmp^3ull)<<shift1;
+    }
+    if(mp_pos.find(cur)!=mp_pos.end()){
+        for(int sp:mp_pos[cur]){
+            if(check1(id,sp-l,0)){
+                is=0;
+                return sp-l;
+            }
+        }
+    }
+    if(mp_pos.find(rcur)!=mp_pos.end()){
+        for(int sp:mp_pos[cur]){
+            if(check1(id,sp-(read_len-r-1),1)){
+                is=1;
+                return sp-(read_len-r-1);
+            }
+        }
+    }
+
+    //k-mer in [k,2*k-1],or the last k-mer
+    l=min(read_len-k,k),r=l+k-1;
+    cur=0,rcur=0;
+    for(int i=l;i<=r;i++){
+        int tmp=trans(symm(vecc[id].str[i],0));
+        int tmpr=trans(symm(vecc[id].str[i],1));
+        cur=((cur<<2)|tmp)&mask;
+        rcur=(rcur>>2)|(tmp^3ull)<<shift1;
+    }
+    if(mp_pos.find(cur)!=mp_pos.end()){
+        for(int sp:mp_pos[cur]){
+            if(check1(id,sp-l,0)){
+                is=0;
+                return sp-l;
+            }
+        }
+    }
+    if(mp_pos.find(rcur)!=mp_pos.end()){
+        for(int sp:mp_pos[cur]){
+            if(check1(id,sp-(read_len-r-1),1)){
+                is=1;
+                return sp-(read_len-r-1);
+            }
+        }
+    }
+    return -1;
 }
 
 
