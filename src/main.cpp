@@ -11,7 +11,7 @@ signed main(int argc,char** argv)
     gettimeofday(&start1, NULL);
     
     char opt;  //
-    const char *optstring = "i:o:dt:rp:";
+    const char *optstring = "i:o:dt:rp:q:";
     string in_path="",out_path="";
     bool flag=0;//flag:if compression;
     while ((opt = getopt(argc, argv, optstring)) != -1) {
@@ -33,6 +33,9 @@ signed main(int argc,char** argv)
                 break;
             case 'p':
                 thread_num=max(0,atoi(optarg)-1);
+                break;
+            case 'q':
+                threshold_ratio_re=max(1,atoi(optarg));
                 break;
             default:
                 cerr<<"Command line parameters default\n";

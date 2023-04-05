@@ -87,8 +87,6 @@ vector<int> first_rev;//if the basket is the root, is it reverse
 //make contig
 pthread_mutex_t vis_id_mutex = PTHREAD_MUTEX_INITIALIZER;
 int vis_id;
-
-pthread_mutex_t vis_mutex = PTHREAD_MUTEX_INITIALIZER;
 vector<int> vis;
 //realignment
 unordered_map<ull,vector<int>> mp_pos;
@@ -135,22 +133,25 @@ class Contig
     Contig(){
         str="";
         num=0;
-        is=0;
-        dismatch.clear();
+        //is=0;
+        //dismatch.clear();
+        rid=-1;
     }
     Contig(int cnt,string str1=""){
         cid=cnt;
         str=str1;
         num=0;
-        is=0;
-        dismatch.clear();
+        //is=0;
+        //dismatch.clear();
+        rid=-1;
     }
     string str;
     int cid;
     int spos;
     int num;
-    int is;//if reverse in ans
-    vector<pic> dismatch;
+    int rid;//the root read id of the contig
+    //int is;//if reverse in ans
+    //vector<pic> dismatch;
 };
 
 struct spre

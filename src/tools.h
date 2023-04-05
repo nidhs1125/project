@@ -243,16 +243,15 @@ bool check1(int id,int pos,int is)//vecc id and pos in ans and if symm
     if(pos<0||pos>ans.length()-read_len) return 0;
     if(!is){
         for(int i=0;i<read_len;i++){
-            if(vecc[id].str[i]!=ans[i+pos]) cnt++;
+            if(vecr[id].str[i]!=ans[i+pos]) cnt++;
         }
     }
     else{
         for(int i=0;i<read_len;i++){
-            if(vecc[id].str[i]!=symm(ans[pos+read_len-i-1],1)) cnt++;
+            if(vecr[id].str[i]!=symm(ans[pos+read_len-i-1],1)) cnt++;
         }
     }
-    if(cnt<=cthre) return 1;
-    else return 0;
+    return cnt<=cthre;
 }
 
 

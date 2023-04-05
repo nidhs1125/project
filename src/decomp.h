@@ -17,18 +17,10 @@ void decompmain(string& in_path,ofstream& fout)
     ans_length=in_int(fin1);
     rcnt=in_int(fin1);
     read_len=in_int(fin1);
-    #if testflag
-    cout<<ans_length<<'\n';
-    #endif
+    cout<<ans_length<<' '<<rcnt<<' '<<read_len<<'\n';
     while(p<ans_length){
-        uint ch;
-        ch=in_int(fin1);
-        int cthre=p+16;//at most 4
-        while(p<ans_length&&p<cthre){
-            ans+=trans(int((ch&0xc0000000)>>30&3));//choose the highest pos 
-            ch<<=2;
-            p++;
-        }
+        ans+=in_char(fin1);
+        p++;
     }
     // while(p<ans_length){
     //     char ch;
@@ -47,9 +39,9 @@ void decompmain(string& in_path,ofstream& fout)
         cpos=bias+ppos;
         isrepeat=in_char(fin2);
         isrev=in_char(fin2);
-        // #if testflag
-        // cout<<"|||"<<i<<' '<<bias<<' '<<cpos<<' '<<isrepeat<<' '<<isrev<<'\n';
-        // #endif
+        #if testflag
+        cout<<"|||"<<i<<' '<<bias<<' '<<cpos<<' '<<isrepeat<<' '<<isrev<<'\n';
+        #endif
         if(isrepeat==1){
             if(isrev==0) vecr[i].str=vecr[preread].str;
             else vecr[i].str=cal_symm(vecr[preread].str);
@@ -72,9 +64,9 @@ void decompmain(string& in_path,ofstream& fout)
                 vecr[i].str[dispos]=disc;
             }
         }
-        // #if testflag
-        // cout<<"+++"<<i<<' '<<vecr[i].str<<'\n';
-        // #endif
+        #if testflag
+        cout<<"+++"<<i<<' '<<vecr[i].str<<'\n';
+        #endif
         
         ppos=cpos;
     }

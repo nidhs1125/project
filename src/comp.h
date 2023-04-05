@@ -451,7 +451,7 @@ void* cal_block(void* arg)
             L=min(L,it.bias);
             R=max(R,it.bias+read_len);
         }
-        printf("cal_block: %d %d %d\n",id,L,R);
+        //printf("cal_block: %d %d %d\n",id,L,R);
         for(int j=L;j<R;j++){//for every pos
             int cnt[4]={0,0,0,0};
             for(int i=0;i<seq.size();i++){//for every basket
@@ -492,9 +492,15 @@ void* cal_block(void* arg)
                         }
                     }
                 }
+                // if(vecr[id].dismatch.size()>=threshold){//can't match the contig,the threshold can be more loose
+                // }
                 con.num++;
             }
         }
+        con.rid=basket[seq[0].to][0];//set root read id
+        #if testflag
+        printf("cal_block: %d %s\n",con.cid,con.str.c_str());
+        #endif
     }
     return (void*)0;
 }
@@ -521,33 +527,52 @@ void SCS_gen()
     #endif
 
     realignment_prework(k);
+
+    int tcnt=0,succ=0,fail=0;
     for(int i=0;i<ccnt;i++){
         if(vecc[i].num!=1) continue;
         else{//try to realign
             int is=0;
-            int rpos=realignment(i,k,is);
+            int rid=vecc[i].rid;
+            int rpos=realignment(rid,k,is);
+            tcnt++;
+            
+            #if testflag
+            cout<<"realignment:"<<i<<' '<<k<<' '<<is<<' '<<rid<<' ';
+            cout<<vecr[rid].str<<' '<<rpos<<' ';
+            vecr[rid].dismatch.clear();
+            if(rpos!=-1) cout<<ans.substr(rpos,read_len);
+            cout<<'\n';
+            #endif
             if(rpos==-1){//add to the end of ans(SCS)
-                ans+=vecc[i].str;
+                ans+=vecr[rid].str;
                 vecc[i].spos=cbias;
-                cbias+=vecc[i].str.length();
+                cbias+=vecr[rid].str.length();
+                fail++;
             }
             else{
-                vecc[i].is=is;
+                succ++;
                 vecc[i].spos=rpos;
+                vecr[rid].isrev=is;
                 if(is==0){
                     for(int j=0;j<read_len;j++){
-                        if(vecc[i].str[j]!=symm(ans[i+rpos],0)) vecc[i].dismatch.pb(pic(j,vecc[i].str[j]));
+                        if(vecr[rid].str[j]!=symm(ans[j+rpos],0)) {
+                            vecr[rid].dismatch.pb(pic(j,vecr[rid].str[j]));
+                        }
                     }
                 }
                 else{
                     for(int j=0;j<read_len;j++){
-                        if(vecc[i].str[j]!=symm(ans[rpos+read_len-1-j],0)) vecc[i].dismatch.pb(pic(j,vecc[i].str[j]));
+                        if(vecr[rid].str[j]!=symm(ans[rpos+read_len-1-j],1)){
+                            vecr[rid].dismatch.pb(pic(j,vecr[rid].str[j]));
+                        }
                     }
                 }
-                
+                assert(vecr[rid].dismatch.size()<=read_len/threshold_ratio_re);
             }
         }
     }
+    cout<<"singleton: "<<tcnt<<' '<<succ<<' '<<fail<<'\n';
 }
 
 void realignment_prework(int k)
@@ -567,20 +592,22 @@ void realignment_prework(int k)
         mp_pos[cur].pb(i);
     }
 }
-int realignment(int id,int k,int& is)//cur vecc id
+int realignment(int id,int k,int& is)//cur vecr id
 {
-    assert(id<vecc.size()&&vecc[id].num==1);
+    //cout<<"realignment:id="<<id<< ' '<<"k="<<k<<'\n';
+    assert(id<vecr.size());
+    
     ull cur=0;
     ull rcur=0;
     int shift1=(2*k-2);
     ull mask=(1ull<<2*k)-1;
-
+    
 
     //the first k-mer
     int l=0,r=l+k-1;
     for(int i=l;i<=r;i++){
-        int tmp=trans(symm(vecc[id].str[i],0));
-        int tmpr=trans(symm(vecc[id].str[i],1));
+        int tmp=trans(symm(vecr[id].str[i],0));
+        int tmpr=trans(symm(vecr[id].str[i],1));
         cur=((cur<<2)|tmp)&mask;
         rcur=(rcur>>2)|(tmp^3ull)<<shift1;
     }
@@ -605,8 +632,8 @@ int realignment(int id,int k,int& is)//cur vecc id
     l=min(read_len-k,k),r=l+k-1;
     cur=0,rcur=0;
     for(int i=l;i<=r;i++){
-        int tmp=trans(symm(vecc[id].str[i],0));
-        int tmpr=trans(symm(vecc[id].str[i],1));
+        int tmp=trans(symm(vecr[id].str[i],0));
+        int tmpr=trans(symm(vecr[id].str[i],1));
         cur=((cur<<2)|tmp)&mask;
         rcur=(rcur>>2)|(tmp^3ull)<<shift1;
     }
@@ -659,14 +686,8 @@ void encode(string& out_path)
     out_int(fout1,read_len);
     cout<<rcnt<<' '<<bas_num<<' '<<ccnt<<'\n';
     //cout<<ans<<'\n';
-    for(int i=0;i<ans.length();i+=16){
-        uint tmp=0;
-        uint base=0x40000000;
-        for(int j=0;j<16;j++){//don't has 'N'
-            if(j+i<ans.length()) tmp=tmp+trans(ans[i+j])*base;
-            base>>=2;
-        }
-        out_int(fout1,tmp);
+    for(int i=0;i<ans.length();i++){
+        out_char(fout1,ans[i]);
     }
 
     //part 2
@@ -693,19 +714,8 @@ void encode(string& out_path)
         }
         else{
             out_char(fout2,(char)(it.isrev));//if rev
-            out_char(fout3,(char)it.dismatch.size());//at most 5
-            //assert(it.dismatch.size()<=threshold);
-            int nnum=0;
-            for(int j=0;j<it.str.length();j++) if(it.str[j]=='N') nnum++;
-            if(threshold==0&&nnum!=it.dismatch.size()){
-                cout<<"ERROR!\n";
-                cout<<i<<' '<<it.str<<' '<<ans.substr(cpos,read_len)<<' '<<it.isrev<<'\n';
-                cout<<it.dismatch.size()<<'\n';
-                for(auto it1:it.dismatch){
-                    cout<<it1.first<<' '<<it1.second<<'\n';
-                }
-                assert(nnum==it.dismatch.size());
-            }
+            out_char(fout3,(char)it.dismatch.size());
+            assert(it.dismatch.size()<=2*threshold);
             dismatchcnt+=it.dismatch.size()*2+1;
             if(it.dismatch.size()!=0){
                 for(auto it1:it.dismatch){
