@@ -1,8 +1,10 @@
 #include<bits/stdc++.h>
 #include<unistd.h>
 #include <sys/time.h>
+#include"tools.h"
 #include"comp.h"
-#include"decomp.h"
+#include"encode.h"
+#include"decode.h"
 
 
 signed main(int argc,char** argv)
@@ -11,7 +13,7 @@ signed main(int argc,char** argv)
     gettimeofday(&start1, NULL);
     
     char opt;  //
-    const char *optstring = "i:o:dt:rp:q:";
+    const char *optstring = "i:o:dt:u:rp:q:";
     string in_path="",out_path="";
     bool flag=0;//flag:if compression;
     while ((opt = getopt(argc, argv, optstring)) != -1) {
@@ -26,7 +28,10 @@ signed main(int argc,char** argv)
                 flag=1;
                 break;
             case 't':
-                threshold=atoi(optarg);
+                threshold1=atoi(optarg);
+                break;
+            case 'u':
+                threshold2=atoi(optarg);
                 break;
             case 'r':
                 order_preserve=1;
@@ -79,7 +84,8 @@ signed main(int argc,char** argv)
             cerr<<"path default\n";
             exit(0);
         }
-        compmain(fin,out_path);
+        compmain(fin);
+        encode(out_path);
     }
     else{
         ofstream fout;
@@ -88,7 +94,7 @@ signed main(int argc,char** argv)
             cerr<<"path default\n";
             exit(0);
         }
-        decompmain(in_path,fout);
+        decode(in_path,fout);
     }
     
     cout<<"finish\n";
