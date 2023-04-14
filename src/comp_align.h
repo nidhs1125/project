@@ -7,6 +7,7 @@ void* cal_pre(void* arg);
 int dsu(int id1,int id2);
 void bas_align(int k);
 void* cal_nxt(void* arg);
+int bas_dsu(int id1,int id2);
 //read_align and absket align
 void align()
 {
@@ -27,56 +28,65 @@ void align()
     assert(vecr.size()==rcnt&&rcnt==rcnt0-repeatcnt-ncnt);
     #if testflag
     read_align(4);
+    //read_align(3);
     #else
-    //read_align(29);
-    read_align(27);
+    // read_align(31);
+    // read_align(29);
+    // read_align(27);
+    // read_align(25);
+    // read_align(23);
     #endif
-    cout<<"read_align finish"<<'\n';
     print_time();
 
     //basket align
     vecr.clear();
-    bas_edge.resize(rcnt0);
-    first_rev.assign(rcnt0,0);
+    block.resize(rcnt0);
+    block_rev.resize(rcnt0);
+    block_bias.resize(rcnt0);
+    bas_pre.resize(rcnt0,-1);
     for(int i=0;i<rcnt0;i++){//the first edge of every read is outedge(bas_edge[i][0]),others are inedge
-        if(isrepeat[i]==0&&hasn[i]==0&&find(i)==i){
+        if(isrepeat[i]==0&&hasn[i]==0&&find(pre,i)==i){
             vecr.pb(i);
-            bas_edge[i].resize(1);
-            bas_edge[i][0]=Edge(i);
+            block[i].pb(i);
+            block_rev[i].pb(0);
+            block_bias[i].pb(0);
+            bas_pre[i]=i;
         }
     }
+    
     #if testflag
     bas_align(4);
+    // cout<<"block info:------\n";
+    // for(int i=0;i<vecr.size();i++){
+    //     int t=vecr[i];
+    //     if(block[t].size()>1){
+    //         cout<<"block_root="<<t<<'\n';
+    //         for(int j=0;j<block[t].size();j++){
+    //             cout<<block[t][j]<<' '<<block_rev[t][j]<<' '<<block_bias[t][j]<<' '<<vread[block[t][j]]<<'\n';
+
+    //         }
+    //     }
+    // }
+    // cout<<"end----------\n";
+    bas_align(3);
     #else
-    //bas_align(29);
+    bas_align(31);
+    bas_align(29);
     bas_align(27);
+    bas_align(25);
+    bas_align(23);
     #endif
 
-    //add reverse edge
-    //map<int,int> mtmp;
-    for(int i=0;i<rcnt0;i++){
-        if(isrepeat[i]==1||hasn[i]==1||find(i)!=i) continue;
-        if(bas_edge[i][0].bias<=max_bias){
-            Edge& tmp=bas_edge[i][0];
-            bas_edge[tmp.to].pb(Edge(i,-tmp.bias,tmp.rev));
-            first_rev[tmp.to]=first_rev[i]^tmp.rev;
 
-            //mtmp[tmp.bias]++;
-        }
-    }
-    // cout<<"mtmp:\n";
-    // for(auto it:mtmp){
-    //     cout<<it.first<<' '<<it.second<<'\n';
-    // }
-    // cout<<'\n';
-    cout<<"align finish\n";
+    
+    cout<<"bas_align finish\n";
     print_time();
 }
 
 
 void read_align(int k)
 {
-    cout<<"read_align start\n";
+    cout<<"read_align start,k="<<k<<'\n';
     cal_k_minimizer(k);
 
     sort(vecr.begin(),vecr.end(),[](int id1,int id2){
@@ -91,7 +101,7 @@ void read_align(int k)
             exit(0);
         }
     }
-    k_minimizer(&thread_tmp[thread_num]);
+    cal_pre(&thread_tmp[thread_num]);
     for(int i=0;i<thread_num;i++){
         //cout<<i<<'\n';
         void* tmp;
@@ -103,33 +113,39 @@ void* cal_pre(void* arg)
 {
     int cnt=0;
     int thread_id=*(int*)arg;
+    //cout<<"cal_pre,thread_id="<<thread_id<<'\n';
     while(1){
         int curid;
-        pthread_mutex_lock(&my_mutex);
+        while(my_id<vecr.size()){
+            if(find(pre,vecr[my_id])!=vecr[my_id]){
+                my_id++;
+                continue;
+            }
+            else if(find(pre,vecr[my_id])==vecr[my_id]) break;
+            my_id++;
+        }
+        if(my_id>=vecr.size()){
+            pthread_mutex_unlock(&my_mutex);
+            break;
+        }
         curid=my_id++;
-        pthread_mutex_unlock(&my_mutex);
-        cnt++;
         int pos=vecr[curid];
-        //cout<<"cal_pre: "<<curid<<' '<<pos<<'\n';
         if(curid>=vecr.size()) break;
         for(int i=curid-1;i>=0&&i>=curid-300;i--){
             int ppos=vecr[i];
             if(val[pos]!=val[ppos]) break;
             if(cal_len(pos)!=cal_len(ppos)) break;
-            //printf("+++ %d %d %d\n",pos,ppos,check(pos,ppos));
+            if(find(pre,ppos)!=ppos) continue;
             if(check(pos,ppos,threshold1)){
                 //merge two baskets,need lock, the total complexity is O(nlog^2n)
-                pthread_mutex_lock(&array_mutex);
-                int id1=find(pos),id2=find(ppos);
-                pre[id1]=pre[id2]=dsu(id1,id2);
+                //merge root
+                pre[pos]=pre[ppos]=dsu(pos,ppos);
                 //first_rev[pos]=iskmersymm[pos];//if multi,then the first_rev is cur rev state
-                pthread_mutex_unlock(&array_mutex);
                 
                 break;
             }
         }
     }
-    //printf("thread_id=%d,cnt=%d\n",thread_id,cnt);
     return (void*)0;
 }
 
@@ -139,13 +155,13 @@ int dsu(int id1,int id2)
     assert(pre[id2]==id2);
     if(id1==id2) return id1;
     if(basket[id1].size()<basket[id2].size()) swap(id1,id2);
-    pre[id2]=id1;
     int tmprev=iskmersymm[id1]^iskmersymm[id2];
     for(int i=0;i<basket[id2].size();i++){
         basket[id1].pb(basket[id2][i]);
         basket_rev[id1].pb(basket_rev[id2][i]^tmprev);
     }
     basket[id2].clear();
+    basket_rev[id2].clear();
     return id1;
 }
 
@@ -153,6 +169,7 @@ int dsu(int id1,int id2)
 void bas_align(int k)
 {
     cout<<"bas_align start,k="<<k<<'\n';
+    curk=k;
     cal_k_minimizer(k);
 
 
@@ -169,13 +186,7 @@ void bas_align(int k)
         nxt_bas[i]=tpre;
     }
 
-    #if testflag
-    cout<<"vecr:\n";
-    for(int i=0;i<vecr.size();i++) cout<<vecr[i]<<' ';
-    cout<<'\n';
-    #endif
     int tmp;
-    
     mutex_init();
 
     for(int i=0;i<thread_num;i++){
@@ -190,7 +201,6 @@ void bas_align(int k)
         pthread_join(thread_id[i],&tmp);
     }
     
-    cout<<"bas_align finish\n";
 }
 
 void* cal_nxt(void* arg)
@@ -198,30 +208,62 @@ void* cal_nxt(void* arg)
     int id=*(int*) arg;
     while(1){
         int curid;
-        pthread_mutex_lock(&my_mutex);
+        while(my_id<vecr.size()){
+            if(find(bas_pre,vecr[my_id])!=vecr[my_id]){
+                my_id++;
+                continue;
+            }
+            else if(find(bas_pre,vecr[my_id])==vecr[my_id]) break;
+            my_id++;
+        }
+        if(my_id>=vecr.size()){
+            pthread_mutex_unlock(&my_mutex);
+            break;
+        }
         curid=my_id++;
-        pthread_mutex_unlock(&my_mutex);
         //printf("pthread_id=%d,curid=%d\n",id,curid);
-        if(curid>=vecr.size()) break;
         int pos=vecr[curid];
-        //printf("cal_nxt: %d %d %d\n",curid,pos,nxt_bas[curid]);
         for(int i=nxt_bas[curid];i<vecr.size()&&i<=nxt_bas[curid]+300;i++){
             int npos=vecr[i];
             if(val[pos]!=val[npos]) break;
             if(cal_len(pos)-cal_len(npos)>max_bias) break;
             assert(cal_len(pos)>cal_len(npos));
+            int tmp=find(bas_pre,npos);
+            if(tmp!=npos) continue;//not the root
             if(check(pos,npos,threshold2)){
                 //merge two baskets,need lock, the total complexity is O(nlog^2n)
-                pthread_mutex_lock(&array_mutex);
-                Edge tmpe=Edge(npos,cal_len(pos)-cal_len(npos),iskmersymm[pos]^iskmersymm[npos]);
-                int tmp=bas_edge[pos][0].update(tmpe);
-                if(tmp) first_rev[pos]=iskmersymm[pos];
-                //else ,bias too large ,discard
-                pthread_mutex_unlock(&array_mutex);//can't merge,but this can occur only few cases
+                bas_pre[pos]=bas_pre[npos]=bas_dsu(pos,npos);
                 break;
                 
             }
         }
     }
     return (void*)0;
+}
+
+//merge two blocks
+int bas_dsu(int id1,int id2)
+{
+    int k=curk;
+    assert(bas_pre[id1]==id1);
+    assert(bas_pre[id2]==id2);
+    if(id1==id2) return id1;
+    if(block[id1].size()<block[id2].size()) swap(id1,id2);
+    int tmprev=iskmersymm[id1]^iskmersymm[id2];
+    int tmpdir;
+    if(tmprev==1) tmpdir=-1;
+    else tmpdir=1;//0->1,1->-1;
+    int basic_bias;
+    if(iskmersymm[id1]==0) basic_bias=cal_len(id1)-cal_len(id2);
+    else if(iskmersymm[id1]==1) basic_bias=-cal_len(id1)+cal_len(id2);
+    for(int i=0;i<block[id2].size();i++){
+        block[id1].pb(block[id2][i]);
+        block_rev[id1].pb(block_rev[id2][i]^tmprev);
+        block_bias[id1].pb(block_bias[id2][i]*tmpdir+basic_bias);
+    }
+    block[id2].clear();
+    block_rev[id2].clear();
+    block_bias[id2].clear();
+    return id1;
+
 }

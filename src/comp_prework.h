@@ -32,6 +32,7 @@ void prework(ifstream& fin)
     rcnt0=rcnt;
     read_len=vread[0].length();
     maxdiscnt=1.0*read_len/threshold_ratio_re;
+    cout<<"maxdiscnt:"<<maxdiscnt<<'\n';
     for(int i=1;i<rcnt0;i++) assert(vread[i].length()==read_len);
     
     if(read_len>max_str_length){
@@ -106,6 +107,7 @@ void cal_repeat()
     //sort(vecr.begin(),vecr.end(),cmp3);
     rcnt-=repeatcnt;
     assert(vecr.size()==rcnt);
+    printf("number of repeat reads=%d\n",repeatcnt);
 }
 
 //find all read(not repeat) with n.
@@ -122,5 +124,9 @@ void cal_n()
         }
     }
     vecr.resize(rcnt);
-
+    printf("number of reads with 'N'=%d\n",ncnt);
+    for(int i=0;i<rcnt0;i++){
+        if(isrepeat[i]||hasn[i]) continue;
+        assert(vread[i].find('N')==string::npos);
+    }
 }

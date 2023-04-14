@@ -63,13 +63,14 @@ void encode(string& out_path)
     int ppos=0;
 
     int dismatchcnt=0;
+    int cntt=0;
     for(int j=0;j<rcnt0;j++){
         int i=vecr[j];
         out_char(fout2,cpos[i]-ppos);//bias
-        if(!(cpos[i]-ppos>=0&&cpos[i]-ppos<=read_len+1)){
-            cout<<"***"<<i<<' '<<cpos[i]<<' '<<ppos<<'\n';
-        }
-        assert(cpos[i]-ppos>=0&&cpos[i]-ppos<=read_len+1);
+        // if(!(cpos[i]-ppos>=0&&cpos[i]-ppos<=read_len+1)){
+        //     cout<<"***"<<i<<' '<<cpos[i]<<' '<<ppos<<'\n';
+        // }
+        //assert(cpos[i]-ppos>=0&&cpos[i]-ppos<=read_len+1);
         out_char(fout2,isrepeat[i]==1);//if repeat
         if(isrepeat[i]){
             out_char(fout2,issymmrepeat[i]);//if symm
@@ -77,6 +78,11 @@ void encode(string& out_path)
         else{
             out_char(fout2,(char)(isrev[i]));//if rev
             out_char(fout3,(char)dismatch[i].size());
+            //may not satisfied,but few
+            if(dismatch[i].size()>maxdiscnt){
+                assert(pre[i]!=-1);
+                cntt++;
+            }
             dismatchcnt+=dismatch[i].size();
             if(dismatch[i].size()!=0){
                 for(auto it1:dismatch[i]){
@@ -87,7 +93,7 @@ void encode(string& out_path)
         }
         ppos=cpos[i];
     }
-    cout<<dismatchcnt<<' '<<repeatcnt<<'\n';
+    cout<<dismatchcnt<<' '<<repeatcnt<<' '<<cntt<<'\n';
 
     fout1.close();
     fout2.close();

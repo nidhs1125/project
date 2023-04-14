@@ -17,19 +17,7 @@ void compmain(ifstream& fin)
     }
     #endif
     align();
-    #if testflag
-    for(int i=0;i<rcnt0;i++){
-        if(isrepeat[i]==1||hasn[i]==1) continue;
-        cout<<i<<' '<<find(i)<<'\n';
-        if(i==find(i)){
-            for(auto it:bas_edge[i]){
-                if(it.bias<=max_bias){
-                    cout<<it.to<<' '<<it.bias<<' '<<it.rev<<'\n';
-                }
-            }
-        }
-    }
-    #endif
+
     conmake();
 
     

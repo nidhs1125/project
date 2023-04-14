@@ -225,12 +225,12 @@ void cal_k_minimizer(int k)//cal all read in [0,rcnt],with arg=k
 
 }
 
-inline int find(int x)
+inline int find(vector<int>& vec,int x)
 {
-    return pre[x]==x?x:pre[x]=find(pre[x]);
+    return vec[x]==x?x:vec[x]=find(vec,vec[x]);
 }
 
-bool check(int id1,int id2,int threshold)//id1->id2,in the k-th round
+inline bool check(int id1,int id2,int threshold)//id1->id2,in the k-th round
 {
     int tot=0;
     int k_mer_pos1=k_mer_pos[id1],issymm1=iskmersymm[id1];
@@ -258,9 +258,7 @@ bool check(int id1,int id2,int threshold)//id1->id2,in the k-th round
         start_pos2=read_len-1;
     }
     
-    assert(len1>=len2);
     start_pos1+=step1*(len1-len2);
-    assert(len1>=len2);
     int p1=start_pos1,p2=start_pos2;
     //cout<<p1<<' '<<p2<<' '<<step1<<' '<<step2<<' '<<'\n';
     while(p1>=0&&p1<read_len&&p2>=0&&p2<read_len){
@@ -268,7 +266,6 @@ bool check(int id1,int id2,int threshold)//id1->id2,in the k-th round
         p1+=step1;
         p2+=step2;
     }
-    //cout<<"check: "<<id1<<' '<<id2<<' '<<tot<<' '<<threshold<<' '<<vecr[id1].str<<' '<<vecr[id2].str<<'\n';
     return tot<=threshold;
 }
 

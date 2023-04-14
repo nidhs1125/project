@@ -56,7 +56,7 @@ void decode(string& in_path,ofstream& fout)
         isrepeat=in_char(fin2);
         isrev=in_char(fin2);
         #if testflag
-        cout<<"|||"<<i<<' '<<bias<<' '<<cpos<<' '<<isrepeat<<' '<<isrev<<'\n';
+        //cout<<"|||"<<i<<' '<<bias<<' '<<cpos<<' '<<isrepeat<<' '<<isrev<<'\n';
         #endif
         if(isrepeat==1){
             if(isrev==0) str=vread[preread];

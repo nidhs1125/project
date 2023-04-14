@@ -21,13 +21,13 @@ class Edge;
 struct srealign;
 
 //consts
-#define testflag 1
+#define testflag 0
 const int maxk=31;
 int threshold1=2;//threshold in read without bias
 int threshold2=2;//threshold in read with bias
 int threshold_ratio_re=5;//threadhold in realignment=readlen/threshold_ratio_re
 int maxdiscnt;
-int thread_num=4;//total thread is thread_num+1
+int thread_num=0;//total thread is thread_num+1
 int order_preserve=0;//if order preserved;
 #define max_str_length 210
 const ull step1=131;
@@ -79,10 +79,13 @@ vector<int> hasn;
 vector<int> pre;//disjoint set
 vector<vector<int> > basket;
 vector<vector<int> > basket_rev;//record the reverse state, it is guaranteed that the first read is positive(0)
-vector<int> first_rev;
 //bas_align
-vector<vector<Edge> > bas_edge;//the first place is out_edge(only one) and the other are in_edge
+int curk;
+vector<int> bas_pre;
 vector<int> nxt_bas;
+vector<vector<int> > block;
+vector<vector<int> > block_rev;
+vector<vector<int> > block_bias;
 
 //make contig
 vector<int> vis;
@@ -109,26 +112,6 @@ struct srealign
     int id;
     int pos;
     int isrev;
-};
-
-class Edge
-{
-    public:
-    Edge(int a=-1,int c=read_len+max_bias,int d=0){
-        to=a;
-        bias=c;
-        rev=d;
-    }
-    int to;
-    int bias;
-    int rev;
-    bool update(Edge& e){
-        if(bias>e.bias){
-            *this=e;
-            return 1;
-        }
-        return 0;
-    }
 };
 
 

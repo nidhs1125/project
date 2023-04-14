@@ -55,7 +55,7 @@ signed main(int argc,char** argv)
             #else
             in_path="../data/SRR554369_1.fastq";
             //in_path="../data/SRR445718.fastq";
-            
+            //in_path="../data/test.fastq";
             #endif
             //cerr<<"in_file lack\n";
             //exit(0);
