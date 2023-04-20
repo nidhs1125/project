@@ -2,25 +2,6 @@
 #include<unistd.h>
 #include "tools.h"
 
-int in_int(ifstream& fin)
-{
-    char ch;
-    int ret=0;
-    for(int i=0;i<4;i++){
-        ret=ret<<8;
-        fin.read(&ch,1);
-        ret|=(unsigned char)ch;
-    }
-    return ret;
-}
-
-unsigned char in_char(ifstream& fin)
-{
-    char ch;
-    fin.read(&ch,1);
-    return (unsigned char)ch;
-}
-
 
 void decode(string& in_path,ofstream& fout)
 {

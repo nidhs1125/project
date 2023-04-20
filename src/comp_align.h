@@ -30,11 +30,11 @@ void align()
     read_align(4);
     //read_align(3);
     #else
-    // read_align(31);
-    // read_align(29);
-    // read_align(27);
-    // read_align(25);
-    // read_align(23);
+    read_align(31);
+    read_align(29);
+    read_align(27);
+    read_align(25);
+    read_align(23);
     #endif
     print_time();
 
@@ -44,12 +44,14 @@ void align()
     block_rev.resize(rcnt0);
     block_bias.resize(rcnt0);
     bas_pre.resize(rcnt0,-1);
+    block_pos.resize(rcnt0,-1);
     for(int i=0;i<rcnt0;i++){//the first edge of every read is outedge(bas_edge[i][0]),others are inedge
         if(isrepeat[i]==0&&hasn[i]==0&&find(pre,i)==i){
             vecr.pb(i);
             block[i].pb(i);
             block_rev[i].pb(0);
             block_bias[i].pb(0);
+            block_pos[i]=0;
             bas_pre[i]=i;
         }
     }
@@ -125,7 +127,6 @@ void* cal_pre(void* arg)
             my_id++;
         }
         if(my_id>=vecr.size()){
-            pthread_mutex_unlock(&my_mutex);
             break;
         }
         curid=my_id++;
@@ -208,16 +209,15 @@ void* cal_nxt(void* arg)
     int id=*(int*) arg;
     while(1){
         int curid;
-        while(my_id<vecr.size()){
-            if(find(bas_pre,vecr[my_id])!=vecr[my_id]){
-                my_id++;
-                continue;
-            }
-            else if(find(bas_pre,vecr[my_id])==vecr[my_id]) break;
-            my_id++;
-        }
+        // while(my_id<vecr.size()){
+        //     if(find(bas_pre,vecr[my_id])!=vecr[my_id]){
+        //         my_id++;
+        //         continue;
+        //     }
+        //     else if(find(bas_pre,vecr[my_id])==vecr[my_id]) break;
+        //     my_id++;
+        // }
         if(my_id>=vecr.size()){
-            pthread_mutex_unlock(&my_mutex);
             break;
         }
         curid=my_id++;
@@ -229,10 +229,10 @@ void* cal_nxt(void* arg)
             if(cal_len(pos)-cal_len(npos)>max_bias) break;
             assert(cal_len(pos)>cal_len(npos));
             int tmp=find(bas_pre,npos);
-            if(tmp!=npos) continue;//not the root
+            //if(tmp!=npos) continue;//not the root
             if(check(pos,npos,threshold2)){
                 //merge two baskets,need lock, the total complexity is O(nlog^2n)
-                bas_pre[pos]=bas_pre[npos]=bas_dsu(pos,npos);
+                bas_pre[find(bas_pre,pos)]=bas_pre[find(bas_pre,npos)]=bas_dsu(pos,npos);
                 break;
                 
             }
@@ -242,28 +242,34 @@ void* cal_nxt(void* arg)
 }
 
 //merge two blocks
+// basic on two reads(maybe not root)
+//the two reads id1 and id2 can match and has their bias and 
 int bas_dsu(int id1,int id2)
 {
+    
     int k=curk;
-    assert(bas_pre[id1]==id1);
-    assert(bas_pre[id2]==id2);
-    if(id1==id2) return id1;
-    if(block[id1].size()<block[id2].size()) swap(id1,id2);
-    int tmprev=iskmersymm[id1]^iskmersymm[id2];
-    int tmpdir;
-    if(tmprev==1) tmpdir=-1;
-    else tmpdir=1;//0->1,1->-1;
-    int basic_bias;
-    if(iskmersymm[id1]==0) basic_bias=cal_len(id1)-cal_len(id2);
-    else if(iskmersymm[id1]==1) basic_bias=-cal_len(id1)+cal_len(id2);
-    for(int i=0;i<block[id2].size();i++){
-        block[id1].pb(block[id2][i]);
-        block_rev[id1].pb(block_rev[id2][i]^tmprev);
-        block_bias[id1].pb(block_bias[id2][i]*tmpdir+basic_bias);
+    int r1=find(bas_pre,id1),r2=find(bas_pre,id2);
+    if(r1==r2) return r1;
+    //cout<<"bas_dsu:"<<id1<<' '<<id2<<' '<<r1<<' '<<r2<<'\n';
+    //cout<<"block_pos:"<<block_pos[id1]<<' '<<block_pos[id2]<<'\n';
+    if(block[r1].size()<block[r2].size()) swap(r1,r2),swap(id1,id2);
+    int rev1=iskmersymm[id1]^block_rev[r1][block_pos[id1]],rev2=iskmersymm[id2]^block_rev[r2][block_pos[id2]];
+    int len1=cal_len(id1)+qow(-1,rev1,2)*block_bias[r1][block_pos[id1]],len2=cal_len(id2)+qow(-1,rev2,2)*block_bias[r2][block_pos[id2]];
+    //cout<<rev1<<' '<<rev2<<' '<<len1<<' '<<len2<<' '<<block_rev[r1][block_pos[id1]]<<' '<<block_rev[r2][block_pos[id2]]<<'\n';
+    int tmprev=rev1^rev2;
+    int tmpdir=qow(-1,tmprev,2);
+    int basic_bias=(len1-len2)*qow(-1,rev1,2);
+    //cout<<tmprev<<' '<<tmpdir<<' '<<basic_bias<<'\n';
+    for(int i=0;i<block[r2].size();i++){
+        block[r1].pb(block[r2][i]);
+        block_rev[r1].pb(block_rev[r2][i]^tmprev);
+        block_bias[r1].pb(block_bias[r2][i]*tmpdir+basic_bias);
+        block_pos[block[r2][i]]=block[r1].size()-1;
     }
-    block[id2].clear();
-    block_rev[id2].clear();
-    block_bias[id2].clear();
-    return id1;
+    block[r2].clear();
+    block_rev[r2].clear();
+    block_bias[r2].clear();
+    //cout<<"bas_dsu finish,"<<r1<<'\n';
+    return r1;
 
 }

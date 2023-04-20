@@ -270,4 +270,38 @@ inline bool check(int id1,int id2,int threshold)//id1->id2,in the k-th round
 }
 
 
+int in_int(ifstream& fin)
+{
+    char ch;
+    int ret=0;
+    for(int i=0;i<4;i++){
+        ret=ret<<8;
+        fin.read(&ch,1);
+        ret|=(unsigned char)ch;
+    }
+    return ret;
+}
+
+unsigned char in_char(ifstream& fin)
+{
+    char ch;
+    fin.read(&ch,1);
+    return (unsigned char)ch;
+}
+
+
+void out_int(ofstream& fout,int out)
+{
+    fout<<(char)((out>>24)&0xff);
+    fout<<(char)((out>>16)&0xff);
+    fout<<(char)((out>>8)&0xff);
+    fout<<(char)((out)&0xff);
+}
+
+void out_char(ofstream& fout,char out)
+{
+    fout<<out;
+}
+
+
 #endif

@@ -11,9 +11,12 @@ void SCS_gen()
     int cbias=0;
     for(int i=0;i<ccnt;i++){
         //if more than one, add
-        ans+=vecc[i].str;
-        vecc[i].spos=cbias;
-        cbias+=vecc[i].str.length();
+        if(vecc[i].num!=0){
+            ans+=vecc[i].str;
+            vecc[i].spos=cbias;
+            cbias+=vecc[i].str.length();
+        }
+        
     }
 
     //for all read in ans , update the bias

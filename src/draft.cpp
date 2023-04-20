@@ -2,6 +2,7 @@
 #include<unistd.h>
 #include <sys/time.h>
 using namespace std;
+typedef long long ll;
 #define pb push_back
 vector<string> vec1,vec2;
 char symm(char c,bool is)
@@ -39,13 +40,24 @@ string cal_symm(string& s)
     }
     return tmp;
 }
+ll qow(ll a,ll p,ll mod) {ll ans=1;for(;p;a=a*a%mod,p>>=1) if(p&1) ans=ans*a%mod;return ans;}
 signed main()
 {
-    while(1){
-        string s;
-        cin>>s;
-        cout<<cal_symm(s);
-    }
-    
+    string out_path="test";
+    ofstream fout;
+    ifstream fin;
+    char ch;
+
+    fout.open(out_path+".mine");
+    fin.open(out_path+".bsc1");
+    while(fin>>ch) fout<<ch;
+    fin.close();
+    fin.open(out_path+".bsc2");
+    while(fin>>ch) fout<<ch;
+    fin.close();
+    fin.open(out_path+".bsc3");
+    while(fin>>ch) fout<<ch;
+    fout.close();
+    fin.close();
     return 0;
 }

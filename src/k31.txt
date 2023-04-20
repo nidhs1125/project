@@ -1,0 +1,49 @@
+
+1657871reads in total
+maxdiscnt:20
+time consumption:415ms
+start cal_repeat
+number of repeat reads=164291
+cal_repeat finish
+start cal_n
+number of reads with 'N'=24335
+prework finish
+read_align start,k=31
+time consumption:16004ms
+bas_align start,k=31
+bas_align finish
+time consumption:23533ms
+contig_make start
+contig make finish
+time consumption:35725ms
+SCS_gen start
+singletonnum=277010,singletonsum=252675
+realignment_prework finish
+failednum=45937,prelen=62291619,aftlen=66885319
+SCS_gen finish
+encoding...
+1469245 843103 66885319
+1307213 164291 0
+
+This is bsc, Block Sorting Compressor. Version 3.3.1. 15 February 2023.
+Copyright (c) 2009-2023 Ilya Grebnov <Ilya.Grebnov@gmail.com>.
+
+
+Compressing test.mine1(00%)
+Compressing test.mine1(78%)
+test.mine1 encoded 66885331 => 13551952 in 2.509s (26.66 MB/s)
+This is bsc, Block Sorting Compressor. Version 3.3.1. 15 February 2023.
+Copyright (c) 2009-2023 Ilya Grebnov <Ilya.Grebnov@gmail.com>.
+
+
+Compressing test.mine2(00%)
+test.mine2 encoded 4973613 => 832264 in 0.181s (27.49 MB/s)
+This is bsc, Block Sorting Compressor. Version 3.3.1. 15 February 2023.
+Copyright (c) 2009-2023 Ilya Grebnov <Ilya.Grebnov@gmail.com>.
+
+
+Compressing test.mine3(00%)
+test.mine3 encoded 4108006 => 1288510 in 0.169s (24.33 MB/s)
+
+finish
+time consumption:91049ms

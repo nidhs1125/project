@@ -86,6 +86,7 @@ vector<int> nxt_bas;
 vector<vector<int> > block;
 vector<vector<int> > block_rev;
 vector<vector<int> > block_bias;
+vector<int> block_pos;
 
 //make contig
 vector<int> vis;
@@ -95,6 +96,8 @@ string ans="";//the gene
 unordered_map<ull,vector<srealign>> mp_pos;//hash_value->vector of read_id 
 
 
+//test
+
 //class
 
 class Contig
@@ -102,9 +105,12 @@ class Contig
     public:
     Contig(){
         str="";
+        spos=0;
+        num=0;
     }
     string str;
     int spos;
+    int num;
 };
 
 struct srealign

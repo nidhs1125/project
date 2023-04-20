@@ -2,18 +2,6 @@
 #include<unistd.h>
 #include "tools.h"
 
-void out_int(ofstream& fout,int out)
-{
-    fout<<(char)((out>>24)&0xff);
-    fout<<(char)((out>>16)&0xff);
-    fout<<(char)((out>>8)&0xff);
-    fout<<(char)((out)&0xff);
-}
-
-void out_char(ofstream& fout,char out)
-{
-    fout<<out;
-}
 
 
 void encode(string& out_path)
@@ -98,7 +86,28 @@ void encode(string& out_path)
     fout1.close();
     fout2.close();
     fout3.close();
-    system("./bsc e test.mine1 test.bsc1");
-    system("./bsc e test.mine2 test.bsc2");
-    system("./bsc e test.mine3 test.bsc3");
+    string str="./bsc e "+out_path+".mine1 "+out_path+".bsc1";
+    system(str.c_str());
+    str="./bsc e "+out_path+".mine2 "+out_path+".bsc2";
+    system(str.c_str());
+    str="./bsc e "+out_path+".mine3 "+out_path+".bsc3";
+    system(str.c_str());
+
+
+
+    ofstream fout;
+    ifstream fin;
+    char ch;
+
+    fout.open(out_path+".mine");//test.mine
+    fin.open(out_path+".bsc1");
+    while(fin>>ch) fout<<ch;
+    fin.close();
+    fin.open(out_path+".bsc2");
+    while(fin>>ch) fout<<ch;
+    fin.close();
+    fin.open(out_path+".bsc3");
+    while(fin>>ch) fout<<ch;
+    fin.close();
+    fout.close();
 }
